@@ -23,6 +23,7 @@
 #include <stdio.h> /* only used for debug output */
 
 #define TEXT_UNIT 64	/* unit for the copy of the input buffer */
+#define WORK_UNIT 64	/* block-level working buffer */
 
 
 /***************
@@ -42,11 +43,23 @@ struct link_ref {
  **********************/
 
 static void
-xhtml_paragraph(struct buf *ob, struct buf *text) { }
+xhtml_paragraph(struct buf *ob, struct buf *text) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<p>");
+	if (text) bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</p>\n"); }
+
+static void
+xhtml_blockquote(struct buf *ob, struct buf *text) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<blockquote>\n");
+	if (text) bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</blockquote>\n"); }
 
 /* exported renderer structure */
 struct mkd_renderer mkd_xhtml = {
-	xhtml_paragraph };
+	xhtml_paragraph,
+	xhtml_blockquote };
 
 
 
@@ -149,6 +162,95 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	return 1; }
 
 
+/* is_empty • returns whether the line is blank */
+static int
+is_empty(char *data, size_t size) {
+	size_t i;
+	for (i = 0; i < size && data[i] != '\n'; i += 1)
+		if (data[i] != ' ' && data[i] != '\t') return 0;
+	return 1; }
+
+
+/* prefix_quote • returns blockquote prefix length */
+static size_t
+prefix_quote(char *data, size_t size) {
+	size_t i = 0;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == '>') {
+		if (i + 1 < size && (data[i + 1] == ' ' || data[i+1] == '\t'))
+			return i + 2;
+		else return i + 1; }
+	else return 0; }
+
+
+/* parse_block • parsing of one block, returning next char to parse */
+static void parse_block(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size);
+
+
+static size_t
+parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size) {
+	size_t beg, end, pre;
+	struct buf *work = bufnew(WORK_UNIT);
+	struct buf *out = bufnew(WORK_UNIT);
+
+	beg = 0;
+	while (beg < size) {
+		for (end = beg + 1; end < size && data[end - 1] != '\n';
+							end += 1);
+		pre = prefix_quote(data + beg, end - beg);
+		if (pre) beg += pre; /* skipping prefix */
+		else if (is_empty(data + beg, end - beg)
+		&& (end >= size || prefix_quote(data + end, size - end) == 0)){
+			/* empty line followed by non-quote line */
+			break; }
+		if (beg < end) bufput(work, data + beg, end - beg);
+		beg = end; }
+
+	parse_block(out, rndr, work->data, work->size);
+	rndr->blockquote(ob, out);
+	return end; }
+
+
+static size_t
+parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size) {
+	size_t i = 0, end = 0;
+	struct buf work = { data, 0, 0, 0, 0 }; /* volatile working buffer */
+
+	while (i < size) {
+		for (end = i + 1; end < size && data[end - 1] != '\n';
+								end += 1);
+		if (is_empty(data + i, size - i))
+			break;
+		i = end; }
+
+	work.size = end;
+	while (work.size && data[work.size - 1] == '\n')
+		work.size -= 1;
+	rndr->paragraph(ob, &work);
+	return end; }
+
+
+/* parse_block • parsing of one block, returning next char to parse */
+static void
+parse_block(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size) {
+	size_t beg, end;
+	char *txt_data;
+	beg = 0;
+	while (beg < size) {
+		txt_data = data + beg;
+		end = size - beg;
+		if (prefix_quote(txt_data, end))
+			beg += parse_blockquote(ob, rndr, txt_data, end);
+		else
+			beg += parse_paragraph(ob, rndr, txt_data, end); } }
+
+
 
 /**********************
  * EXPORTED FUNCTIONS *
@@ -191,6 +293,8 @@ markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndr, int flags){
 	&&  text->data[text->size - 1] != '\r')
 		bufputc(text, '\n');
 
+	/* second pass: actual rendering */
+	parse_block(ob, rndr, text->data, text->size);
 
 /* debug: printing the reference list */
 BUFPUTSL(ob, "(refs");
@@ -204,9 +308,6 @@ for (i = 0; i < refs.size; i += 1) {
 		BUFPUTSL(ob, "\" \"");
 		bufput(ob, lr->title->data, lr->title->size); }
 	BUFPUTSL(ob, "\")"); }
-BUFPUTSL(ob, ")\n");
-
-	/* place-holder : copy of the remaing data into the output buffer */
-	bufput(ob, text->data, text->size); }
+BUFPUTSL(ob, ")\n"); }
 
 /* vim: set filetype=c: */
