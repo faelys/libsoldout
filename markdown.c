@@ -21,6 +21,7 @@
 #include "array.h"
 
 #include <stdio.h> /* only used for debug output */
+#include <string.h>
 
 #define TEXT_UNIT 64	/* unit for the copy of the input buffer */
 #define WORK_UNIT 64	/* block-level working buffer */
@@ -193,8 +194,8 @@ static void parse_block(struct buf *ob, struct mkd_renderer *rndr,
 static size_t
 parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size) {
-	size_t beg, end, pre;
-	struct buf *work = bufnew(WORK_UNIT);
+	size_t beg, end, pre, work_size = 0;
+	char *work_data = 0;
 	struct buf *out = bufnew(WORK_UNIT);
 
 	beg = 0;
@@ -207,10 +208,17 @@ parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 		&& (end >= size || prefix_quote(data + end, size - end) == 0)){
 			/* empty line followed by non-quote line */
 			break; }
-		if (beg < end) bufput(work, data + beg, end - beg);
+		if (beg < end) { /* copy into the in-place working buffer */
+			/* bufput(work, data + beg, end - beg); */
+			if (!work_data)
+				work_data = data + beg;
+			else if (data + beg != work_data + work_size)
+				memmove(work_data + work_size, data + beg,
+						end - beg);
+			work_size += end - beg; }
 		beg = end; }
 
-	parse_block(out, rndr, work->data, work->size);
+	parse_block(out, rndr, work_data, work_size);
 	rndr->blockquote(ob, out);
 	return end; }
 
