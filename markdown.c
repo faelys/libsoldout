@@ -63,6 +63,21 @@ rndr_blockcode(struct buf *ob, struct buf *text) {
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code></pre>\n"); }
 
+static void
+rndr_listitem(struct buf *ob, struct buf *text, int flags) {
+	BUFPUTSL(ob, "<li>");
+	if (text) {
+		while (text->size && text->data[text->size - 1] == '\n')
+			text->size -= 1;
+		bufput(ob, text->data, text->size); }
+	BUFPUTSL(ob, "</li>\n"); }
+
+static void
+rndr_list(struct buf *ob, struct buf *text, int flags) {
+	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
+	if (text) bufput(ob, text->data, text->size);
+	bufput(ob, flags & MKD_LIST_ORDERED ? "</ol>\n" : "</ul>\n", 6); }
+
 
 
 /**********************
@@ -73,7 +88,9 @@ rndr_blockcode(struct buf *ob, struct buf *text) {
 struct mkd_renderer mkd_xhtml = {
 	rndr_paragraph,
 	rndr_blockquote,
-	rndr_blockcode };
+	rndr_blockcode,
+	rndr_listitem,
+	rndr_list };
 
 
 
@@ -218,6 +235,44 @@ prefix_code(char *data, size_t size) {
 			&& data[2] == ' ' && data[3] == ' ') return 4;
 	return 0; }
 
+/* prefix_li • returns blank prefix length inside list items */
+static size_t
+prefix_li(char *data, size_t size) {
+	size_t i = 0;
+	if (i < size && data[i] == '\t') return 1;
+	if (i < size && data[i] == ' ') { i += 1;
+	if (i < size && data[i] == ' ') { i += 1;
+	if (i < size && data[i] == ' ') { i += 1;
+	if (i < size && data[i] == ' ') { i += 1; } } } }
+	return i; }
+
+/* prefix_oli • returns ordered list item prefix */
+static size_t
+prefix_oli(char *data, size_t size) {
+	size_t i = 0;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i >= size || data[i] < '0' || data[i] > '9') return 0;
+	while (i < size && data[i] >= '0' && data[i] <= '9') i += 1;
+	if (i + 1 >= size || data[i] != '.'
+	|| (data[i + 1] != ' ' && data[i + 1] != '\t')) return 0;
+	return i + 1; }
+
+
+/* prefix_uli • returns ordered list item prefix */
+static size_t
+prefix_uli(char *data, size_t size) {
+	size_t i = 0;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i < size && data[i] == ' ') i += 1;
+	if (i + 1 >= size
+	|| (data[i] != '*' && data[i] != '+' && data[i] == '-')
+	|| (data[i + 1] != ' ' && data[i + 1] != '\t'))
+		return 0;
+	return i + 1; }
+
 
 /* parse_block • parsing of one block, returning next char to parse */
 static void parse_block(struct buf *ob, struct mkd_renderer *rndr,
@@ -308,6 +363,65 @@ parse_blockcode(struct buf *ob, struct mkd_renderer *rndr,
 	return beg; }
 
 
+/* parse_listitem • parsing of a single list item */
+/*	assuming initial prefix is already removed */
+static size_t
+parse_listitem(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size, int *flags) {
+	struct buf *work = bufnew(WORK_UNIT);
+	size_t beg = 0, end, pre;
+
+	while (beg < size) {
+		for (end = beg + 1; end < size && data[end - 1] != '\n';
+							end += 1);
+		if (is_empty(data + beg, end - beg)) {
+			if (end < size
+			&& !is_empty(data + end, size - end)) {
+				if (prefix_oli(data + end, size - end)
+				||  prefix_uli(data + end, size - end))
+					*flags |= MKD_LI_BLOCK;
+				if (!prefix_li(data + end, size - end)) {
+					beg = end;
+					break; }
+				else *flags |= MKD_LI_BLOCK; } }
+		if (prefix_oli(data + beg, end - beg)
+		||  prefix_uli(data + beg, end - beg))
+			break;
+		pre = prefix_li(data + beg, end - beg);
+		if (pre) beg += pre;
+		if (beg < end)
+			bufput(work, data + beg, end - beg);
+		beg = end; }
+
+	if (*flags & MKD_LI_BLOCK) {
+		struct buf *wk2 = bufnew(WORK_UNIT);
+		parse_block(wk2, rndr, work->data, work->size);
+		bufrelease(work);
+		work = wk2; }
+	rndr->listitem(ob, work, *flags);
+	bufrelease(work);
+	return beg; }
+
+
+/* parse_list • parsing ordered or unordered list block */
+static size_t
+parse_list(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size, int flags) {
+	struct buf *work = bufnew(WORK_UNIT);
+	size_t i = 0, pre;
+
+	while (i < size) {
+		pre = prefix_oli(data + i, size - i);
+		if (!pre) pre = prefix_uli(data + i, size - i);
+		if (!pre) break;
+		i += pre;
+		i += parse_listitem(work, rndr, data + i, size - i, &flags); }
+
+	rndr->list(ob, work, flags);
+	bufrelease(work);
+	return i; }
+
+
 /* parse_block • parsing of one block, returning next char to parse */
 static void
 parse_block(struct buf *ob, struct mkd_renderer *rndr,
@@ -322,6 +436,11 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 			beg += parse_blockquote(ob, rndr, txt_data, end);
 		else if (prefix_code(txt_data, end))
 			beg += parse_blockcode(ob, rndr, txt_data, end);
+		else if (prefix_uli(txt_data, end))
+			beg += parse_list(ob, rndr, txt_data, end, 0);
+		else if (prefix_oli(txt_data, end))
+			beg += parse_list(ob, rndr, txt_data, end,
+						MKD_LIST_ORDERED);
 		else if (is_empty(txt_data, end)) {
 			while (beg < size && data[beg] != '\n') beg += 1;
 			beg += 1; }

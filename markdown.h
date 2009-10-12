@@ -30,7 +30,9 @@
 struct mkd_renderer {
 	void (*paragraph)(struct buf *ob, struct buf *text);
 	void (*blockquote)(struct buf *ob, struct buf *text);
-	void (*blockcode)(struct buf *ob, struct buf *text); };
+	void (*blockcode)(struct buf *ob, struct buf *text);
+	void (*listitem)(struct buf *ob, struct buf *text, int flags);
+	void (*list)(struct buf *ob, struct buf *text, int flags); };
 
 
 
@@ -39,6 +41,15 @@ struct mkd_renderer {
  ************************/
 
 extern struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
+
+
+
+/*********
+ * FLAGS *
+ *********/
+
+#define MKD_LIST_ORDERED	1
+#define MKD_LI_BLOCK		2  /* <li> containing block data */
 
 
 
