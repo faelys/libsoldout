@@ -57,10 +57,18 @@ xhtml_blockquote(struct buf *ob, struct buf *text) {
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</blockquote>\n"); }
 
+static void
+xhtml_blockcode(struct buf *ob, struct buf *text) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<pre><code>");
+	if (text) bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</code></pre>\n"); }
+
 /* exported renderer structure */
 struct mkd_renderer mkd_xhtml = {
 	xhtml_paragraph,
-	xhtml_blockquote };
+	xhtml_blockquote,
+	xhtml_blockcode };
 
 
 
@@ -172,6 +180,17 @@ is_empty(char *data, size_t size) {
 	return 1; }
 
 
+/* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
+static void
+html_escape(struct buf *ob, char *data, size_t size) {
+	size_t i;
+	for (i = 0; i < size; i += 1)
+		if (data[i] == '&') BUFPUTSL(ob, "&amp;");
+		else if (data[i] == '<') BUFPUTSL(ob, "&lt;");
+		else if (data[i] == '>') BUFPUTSL(ob, "&gt;");
+		else bufputc(ob, data[i]); }
+
+
 /* prefix_quote • returns blockquote prefix length */
 static size_t
 prefix_quote(char *data, size_t size) {
@@ -184,6 +203,15 @@ prefix_quote(char *data, size_t size) {
 			return i + 2;
 		else return i + 1; }
 	else return 0; }
+
+
+/* prefix_code • returns prefix length for block code*/
+static size_t
+prefix_code(char *data, size_t size) {
+	if (size > 0 && data[0] == '\t') return 1;
+	if (size > 3 && data[0] == ' ' && data[1] == ' '
+			&& data[2] == ' ' && data[3] == ' ') return 4;
+	return 0; }
 
 
 /* parse_block • parsing of one block, returning next char to parse */
@@ -243,6 +271,34 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 	return end; }
 
 
+static size_t
+parse_blockcode(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size) {
+	size_t beg, end, pre;
+	struct buf *work = bufnew(WORK_UNIT);
+
+	beg = 0;
+	while (beg < size) {
+		for (end = beg + 1; end < size && data[end - 1] != '\n';
+							end += 1);
+		pre = prefix_code(data + beg, end - beg);
+		if (pre) beg += pre; /* skipping prefix */
+		else if (!is_empty(data + beg, end - beg))
+			/* non-empty non-prefixed line breaks the pre */
+			break;
+		if (beg < end)
+			/* verbatim copy to the working buffer,
+				escaping entities */
+			html_escape(work, data + beg, end - beg);
+		beg = end; }
+
+	while (work->size && work->data[work->size - 1] == '\n')
+		work->size -= 1;
+	bufputc(work, '\n');
+	rndr->blockcode(ob, work);
+	return beg; }
+
+
 /* parse_block • parsing of one block, returning next char to parse */
 static void
 parse_block(struct buf *ob, struct mkd_renderer *rndr,
@@ -255,6 +311,8 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 		end = size - beg;
 		if (prefix_quote(txt_data, end))
 			beg += parse_blockquote(ob, rndr, txt_data, end);
+		else if (prefix_code(txt_data, end))
+			beg += parse_blockcode(ob, rndr, txt_data, end);
 		else
 			beg += parse_paragraph(ob, rndr, txt_data, end); } }
 
