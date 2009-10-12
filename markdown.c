@@ -233,9 +233,10 @@ parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 		pre = prefix_quote(data + beg, end - beg);
 		if (pre) beg += pre; /* skipping prefix */
 		else if (is_empty(data + beg, end - beg)
-		&& (end >= size || prefix_quote(data + end, size - end) == 0)){
+		&& (end >= size || (prefix_quote(data + end, size - end) == 0
+					&& !is_empty(data + end, size - end))))
 			/* empty line followed by non-quote line */
-			break; }
+			break;
 		if (beg < end) { /* copy into the in-place working buffer */
 			/* bufput(work, data + beg, end - beg); */
 			if (!work_data)
@@ -313,6 +314,9 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 			beg += parse_blockquote(ob, rndr, txt_data, end);
 		else if (prefix_code(txt_data, end))
 			beg += parse_blockcode(ob, rndr, txt_data, end);
+		else if (is_empty(txt_data, end)) {
+			while (beg < size && data[beg] != '\n') beg += 1;
+			beg += 1; }
 		else
 			beg += parse_paragraph(ob, rndr, txt_data, end); } }
 
