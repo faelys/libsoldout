@@ -38,37 +38,42 @@ struct link_ref {
 	struct buf *	title; };
 
 
-
-/**********************
- * XHTML 1.0 RENDERER *
- **********************/
+/********************
+ * GENERIC RENDERER *
+ ********************/
 
 static void
-xhtml_paragraph(struct buf *ob, struct buf *text) {
+rndr_paragraph(struct buf *ob, struct buf *text) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<p>");
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</p>\n"); }
 
 static void
-xhtml_blockquote(struct buf *ob, struct buf *text) {
+rndr_blockquote(struct buf *ob, struct buf *text) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<blockquote>\n");
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</blockquote>\n"); }
 
 static void
-xhtml_blockcode(struct buf *ob, struct buf *text) {
+rndr_blockcode(struct buf *ob, struct buf *text) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<pre><code>");
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code></pre>\n"); }
 
+
+
+/**********************
+ * XHTML 1.0 RENDERER *
+ **********************/
+
 /* exported renderer structure */
 struct mkd_renderer mkd_xhtml = {
-	xhtml_paragraph,
-	xhtml_blockquote,
-	xhtml_blockcode };
+	rndr_paragraph,
+	rndr_blockquote,
+	rndr_blockcode };
 
 
 
@@ -219,6 +224,7 @@ static void parse_block(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size);
 
 
+/* parse_blockquote • hanldes parsing of a blockquote fragment */
 static size_t
 parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size) {
@@ -252,6 +258,7 @@ parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 	return end; }
 
 
+/* parse_blockquote • hanldes parsing of a regular paragraph */
 static size_t
 parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size) {
@@ -272,6 +279,7 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 	return end; }
 
 
+/* parse_blockquote • hanldes parsing of a block-level code fragment */
 static size_t
 parse_blockcode(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size) {
