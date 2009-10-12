@@ -165,7 +165,7 @@ markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndr, int flags){
 	/* first pass: looking for references, copying everything else */
 	arr_init(&refs, sizeof (struct link_ref));
 	beg = 0;
-	while (beg < ib->size) { /* iterating over lines */
+	while (beg < ib->size) /* iterating over lines */
 		if (is_ref(ib->data, beg, ib->size, &end, &refs))
 			beg = end;
 		else { /* skipping to the next line */
@@ -173,11 +173,24 @@ markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndr, int flags){
 			while (end < ib->size
 			&& ib->data[end] != '\n' && ib->data[end] != '\r')
 				end += 1;
+			/* adding the line body if present */
+			if (end > beg) bufput(text, ib->data + beg, end - beg);
 			while (end < ib->size
-			&& (ib->data[end] == '\n' || ib->data[end] == '\r'))
-				end += 1;
-			bufput(text, ib->data + beg, end - beg);
-			beg = end; } }
+			&& (ib->data[end] == '\n' || ib->data[end] == '\r')) {
+				/* add one \n per newline */
+				if (ib->data[end] == '\n'
+				|| (end + 1 < ib->size
+						&& ib->data[end + 1] != '\n'))
+					bufputc(text, '\n');
+				end += 1; }
+			beg = end; }
+
+	/* adding a final newline if not already present */
+	if (!text->size) return;
+	if (text->data[text->size - 1] != '\n'
+	&&  text->data[text->size - 1] != '\r')
+		bufputc(text, '\n');
+
 
 /* debug: printing the reference list */
 BUFPUTSL(ob, "(refs");
