@@ -28,11 +28,11 @@
 
 /* mkd_renderer • functions for rendering parsed data */
 struct mkd_renderer {
-	void (*paragraph)(struct buf *ob, struct buf *text);
-	void (*blockquote)(struct buf *ob, struct buf *text);
 	void (*blockcode)(struct buf *ob, struct buf *text);
+	void (*blockquote)(struct buf *ob, struct buf *text);
+	void (*list)(struct buf *ob, struct buf *text, int flags);
 	void (*listitem)(struct buf *ob, struct buf *text, int flags);
-	void (*list)(struct buf *ob, struct buf *text, int flags); };
+	void (*paragraph)(struct buf *ob, struct buf *text); };
 
 
 

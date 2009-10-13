@@ -43,11 +43,11 @@ struct link_ref {
  ********************/
 
 static void
-rndr_paragraph(struct buf *ob, struct buf *text) {
+rndr_blockcode(struct buf *ob, struct buf *text) {
 	if (ob->size) bufputc(ob, '\n');
-	BUFPUTSL(ob, "<p>");
+	BUFPUTSL(ob, "<pre><code>");
 	if (text) bufput(ob, text->data, text->size);
-	BUFPUTSL(ob, "</p>\n"); }
+	BUFPUTSL(ob, "</code></pre>\n"); }
 
 static void
 rndr_blockquote(struct buf *ob, struct buf *text) {
@@ -57,11 +57,10 @@ rndr_blockquote(struct buf *ob, struct buf *text) {
 	BUFPUTSL(ob, "</blockquote>\n"); }
 
 static void
-rndr_blockcode(struct buf *ob, struct buf *text) {
-	if (ob->size) bufputc(ob, '\n');
-	BUFPUTSL(ob, "<pre><code>");
+rndr_list(struct buf *ob, struct buf *text, int flags) {
+	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
 	if (text) bufput(ob, text->data, text->size);
-	BUFPUTSL(ob, "</code></pre>\n"); }
+	bufput(ob, flags & MKD_LIST_ORDERED ? "</ol>\n" : "</ul>\n", 6); }
 
 static void
 rndr_listitem(struct buf *ob, struct buf *text, int flags) {
@@ -73,10 +72,11 @@ rndr_listitem(struct buf *ob, struct buf *text, int flags) {
 	BUFPUTSL(ob, "</li>\n"); }
 
 static void
-rndr_list(struct buf *ob, struct buf *text, int flags) {
-	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
+rndr_paragraph(struct buf *ob, struct buf *text) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<p>");
 	if (text) bufput(ob, text->data, text->size);
-	bufput(ob, flags & MKD_LIST_ORDERED ? "</ol>\n" : "</ul>\n", 6); }
+	BUFPUTSL(ob, "</p>\n"); }
 
 
 
@@ -86,11 +86,11 @@ rndr_list(struct buf *ob, struct buf *text, int flags) {
 
 /* exported renderer structure */
 struct mkd_renderer mkd_xhtml = {
-	rndr_paragraph,
-	rndr_blockquote,
 	rndr_blockcode,
+	rndr_blockquote,
+	rndr_list,
 	rndr_listitem,
-	rndr_list };
+	rndr_paragraph };
 
 
 
