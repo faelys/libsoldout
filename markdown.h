@@ -30,6 +30,7 @@
 struct mkd_renderer {
 	void (*blockcode)(struct buf *ob, struct buf *text);
 	void (*blockquote)(struct buf *ob, struct buf *text);
+	void (*hrule)(struct buf *ob);
 	void (*list)(struct buf *ob, struct buf *text, int flags);
 	void (*listitem)(struct buf *ob, struct buf *text, int flags);
 	void (*paragraph)(struct buf *ob, struct buf *text); };

@@ -84,10 +84,17 @@ rndr_paragraph(struct buf *ob, struct buf *text) {
  * XHTML 1.0 RENDERER *
  **********************/
 
+static void
+xhtml_hrule(struct buf *ob) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<hr />\n"); }
+
+
 /* exported renderer structure */
 struct mkd_renderer mkd_xhtml = {
 	rndr_blockcode,
 	rndr_blockquote,
+	xhtml_hrule,
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph };
@@ -202,6 +209,35 @@ is_empty(char *data, size_t size) {
 	return 1; }
 
 
+/* is_hrule • returns whether a line is a horizontal rule */
+static int
+is_hrule(char *data, size_t size) {
+	size_t i = 0, n = 0;
+	char c;
+
+	/* skipping initial spaces */
+	if (size < 3) return 0;
+	if (data[0] == ' ') { i += 1;
+	if (data[1] == ' ') { i += 1;
+	if (data[2] == ' ') { i += 1; } } }
+
+	/* looking at the hrule char */
+	if (i + 2 >= size
+	|| (data[i] != '*' && data[i] != '-' && data[i] != '_'))
+		return 0;
+	c = data[i];
+
+	/* the whole line must be the char or whitespace */
+	while (i < size && data[i] != '\n') {
+		if (data[i] == c) n += 1;
+		else if (data[i] != ' ' && data[i] != '\t')
+			return 0;
+		i += 1; }
+
+	return n >= 3; }
+
+
+
 /* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
 static void
 html_escape(struct buf *ob, char *data, size_t size) {
@@ -283,7 +319,7 @@ static void parse_block(struct buf *ob, struct mkd_renderer *rndr,
 static size_t
 parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size) {
-	size_t beg, end, pre, work_size = 0;
+	size_t beg, end = 0, pre, work_size = 0;
 	char *work_data = 0;
 	struct buf *out = bufnew(WORK_UNIT);
 
@@ -325,6 +361,9 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 								end += 1);
 		if (is_empty(data + i, size - i))
 			break;
+		if (is_hrule(data + i, size - i)) {
+			end = i;
+			break; }
 		i = end; }
 
 	work.size = end;
@@ -432,7 +471,14 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 	while (beg < size) {
 		txt_data = data + beg;
 		end = size - beg;
-		if (prefix_quote(txt_data, end))
+		if (is_empty(txt_data, end)) {
+			while (beg < size && data[beg] != '\n') beg += 1;
+			beg += 1; }
+		else if (is_hrule(txt_data, end)) {
+			rndr->hrule(ob);
+			while (beg < size && data[beg] != '\n') beg += 1;
+			beg += 1; }
+		else if (prefix_quote(txt_data, end))
 			beg += parse_blockquote(ob, rndr, txt_data, end);
 		else if (prefix_code(txt_data, end))
 			beg += parse_blockcode(ob, rndr, txt_data, end);
@@ -441,9 +487,6 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 		else if (prefix_oli(txt_data, end))
 			beg += parse_list(ob, rndr, txt_data, end,
 						MKD_LIST_ORDERED);
-		else if (is_empty(txt_data, end)) {
-			while (beg < size && data[beg] != '\n') beg += 1;
-			beg += 1; }
 		else
 			beg += parse_paragraph(ob, rndr, txt_data, end); } }
 
