@@ -268,7 +268,7 @@ prefix_uli(char *data, size_t size) {
 	if (i < size && data[i] == ' ') i += 1;
 	if (i < size && data[i] == ' ') i += 1;
 	if (i + 1 >= size
-	|| (data[i] != '*' && data[i] != '+' && data[i] == '-')
+	|| (data[i] != '*' && data[i] != '+' && data[i] != '-')
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t'))
 		return 0;
 	return i + 1; }
@@ -384,11 +384,11 @@ parse_listitem(struct buf *ob, struct mkd_renderer *rndr,
 					beg = end;
 					break; }
 				else *flags |= MKD_LI_BLOCK; } }
-		if (prefix_oli(data + beg, end - beg)
-		||  prefix_uli(data + beg, end - beg))
-			break;
 		pre = prefix_li(data + beg, end - beg);
 		if (pre) beg += pre;
+		else if (prefix_oli(data + beg, end - beg)
+		||  prefix_uli(data + beg, end - beg))
+			break;
 		if (beg < end)
 			bufput(work, data + beg, end - beg);
 		beg = end; }
