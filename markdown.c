@@ -318,6 +318,10 @@ parse_link(struct buf *ob, struct render *rndr, char *data, size_t size,
 	if (is_img) rndr->make.image(ob, link, title, content);
 	else rndr->make.link(ob, link, title, content);
 
+	/* cleanup */
+	bufrelease(link);
+	bufrelease(title);
+	bufrelease(content);
 	return i; }
 
 
@@ -622,6 +626,7 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 
 	parse_block(out, rndr, work_data, work_size);
 	rndr->make.blockquote(ob, out);
+	bufrelease(out);
 	return end; }
 
 
@@ -701,6 +706,7 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 		work->size -= 1;
 	bufputc(work, '\n');
 	rndr->make.blockcode(ob, work);
+	bufrelease(work);
 	return beg; }
 
 
@@ -988,6 +994,14 @@ for (i = 0; i < rndr.refs.size; i += 1) {
 		BUFPUTSL(ob, "\" \"");
 		bufput(ob, lr[i].title->data, lr[i].title->size); }
 	BUFPUTSL(ob, "\")"); }
-BUFPUTSL(ob, ")\n"); }
+BUFPUTSL(ob, ")\n");
+
+	/* clean-up */
+	bufrelease(text);
+	lr = rndr.refs.base;
+	for (i = 0; i < rndr.refs.size; i += 1) {
+		bufrelease(lr[i].id);
+		bufrelease(lr[i].link);
+		bufrelease(lr[i].title); } }
 
 /* vim: set filetype=c: */
