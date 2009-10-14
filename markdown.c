@@ -238,7 +238,7 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 
 		/* escape: verbatim copy of the following char */
 		else if (data[i] == '\\') {
-			if (i + 1 < size) bufputc(ob, data[i + 1]);
+			if (i + 1 < size) html_escape(ob, data + i + 1, 1);
 			i += 2; }
 
 		/* entity check: are considered valid entities anything
