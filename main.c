@@ -24,6 +24,12 @@
 #define OUTPUT_UNIT 64
 
 
+/* buffer statistics, to track some memleaks */
+extern long buffer_stat_nb;
+extern size_t buffer_stat_alloc_bytes;
+
+
+
 /* main • main function, interfacing STDIO with the parser */
 int
 main(void) {
@@ -45,9 +51,17 @@ main(void) {
 	/* writing the result to stdout */
 	fwrite(ob->data, 1, ob->size, stdout);
 
-	/* cleanup and exit */
+	/* cleanup */
 	bufrelease(ib);
 	bufrelease(ob);
+
+	/* memory checks */
+	if (buffer_stat_nb)
+		fprintf(stderr, "Warning: %ld buffers still active\n",
+				buffer_stat_nb);
+	if (buffer_stat_alloc_bytes)
+		fprintf(stderr, "Warning: %zu bytes still allocated\n",
+				buffer_stat_alloc_bytes);
 	return 0; }
 
 /* vim: set filetype=c: */
