@@ -65,6 +65,12 @@ rndr_blockquote(struct buf *ob, struct buf *text) {
 	BUFPUTSL(ob, "</blockquote>\n"); }
 
 static void
+rndr_codespan(struct buf *ob, struct buf *text) {
+	BUFPUTSL(ob, "<code>");
+	if (text) bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</code>"); }
+
+static void
 rndr_header(struct buf *ob, struct buf *text, int level) {
 	if (ob->size) bufputc(ob, '\n');
 	bufprintf(ob, "<h%d>", level);
@@ -113,12 +119,29 @@ xhtml_linebreak(struct buf *ob) {
 struct mkd_renderer mkd_xhtml = {
 	rndr_blockcode,
 	rndr_blockquote,
+	rndr_codespan,
 	rndr_header,
 	xhtml_hrule,
 	xhtml_linebreak,
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph };
+
+
+
+/***************************
+ * STATIC HELPER FUNCTIONS *
+ ***************************/
+
+/* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
+static void
+html_escape(struct buf *ob, char *data, size_t size) {
+	size_t i;
+	for (i = 0; i < size; i += 1)
+		if (data[i] == '&') BUFPUTSL(ob, "&amp;");
+		else if (data[i] == '<') BUFPUTSL(ob, "&lt;");
+		else if (data[i] == '>') BUFPUTSL(ob, "&gt;");
+		else bufputc(ob, data[i]); }
 
 
 
@@ -151,15 +174,16 @@ static const char inline_active[256] = {
 static void
 parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 	size_t i = 0, end;
+	struct buf *work = 0;
 
-	for (;;) {
+	while (i < size) {
 		/* copying inactive chars into the output */
 		end = i;
 		while (end < size && !inline_active[(unsigned char)data[end]])
 			end += 1;
 		bufput(ob, data + i, end - i);
-		i = end;
 		if (end >= size) break;
+		i = end;
 
 		/* line break */
 		if (data[i] == '\n') {
@@ -170,12 +194,32 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 			else bufputc(ob, '\n');
 			i += 1; }
 
+		/* code span */
+		else if (data[i] == '`') {
+			end = i + 1;
+			while (end < size && data[end] != '`') end += 1;
+			if (end >= size) { /* no matching backtick */
+				bufputc(ob, '`');
+				i += 1; }
+			else if (end == i + 1) { /* empty code span */
+				BUFPUTSL(ob, "``");
+				i += 2; }
+			else { /* real code span */
+				if (!work) work = bufnew(WORK_UNIT);
+				work->size = 0;
+				html_escape(work, data + i + 1, end - i - 1);
+				rndr->make.codespan(ob, work);
+				i = end + 1; } }
+
 		/* should never happen */
 		else {
 			printf("Unhandled active char '%c' (%d)\n",
 				data[i], (int)data[i]);
 			bufputc(ob, data[i]);
-			i += 1; } } }
+			i += 1; } }
+
+	/* cleanup */
+	bufrelease(work); }
 
 
 
@@ -238,17 +282,6 @@ is_headerline(char *data, size_t size) {
 		return (i >= size || data[i] == '\n') ? 2 : 0; }
 
 	return 0; }
-
-
-/* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
-static void
-html_escape(struct buf *ob, char *data, size_t size) {
-	size_t i;
-	for (i = 0; i < size; i += 1)
-		if (data[i] == '&') BUFPUTSL(ob, "&amp;");
-		else if (data[i] == '<') BUFPUTSL(ob, "&lt;");
-		else if (data[i] == '>') BUFPUTSL(ob, "&gt;");
-		else bufputc(ob, data[i]); }
 
 
 /* prefix_quote • returns blockquote prefix length */
@@ -545,9 +578,9 @@ parse_block(struct buf *ob, struct render *rndr,
 
 
 
-/***************************
- * STATIC HELPER FUNCTIONS *
- ***************************/
+/*********************
+ * REFERENCE PARSING *
+ *********************/
 
 /* is_ref • returns whether a line is a reference or not */
 static int
