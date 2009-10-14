@@ -57,6 +57,13 @@ rndr_blockquote(struct buf *ob, struct buf *text) {
 	BUFPUTSL(ob, "</blockquote>\n"); }
 
 static void
+rndr_header(struct buf *ob, struct buf *text, int level) {
+	if (ob->size) bufputc(ob, '\n');
+	bufprintf(ob, "<h%d>", level);
+	if (text) bufput(ob, text->data, text->size);
+	bufprintf(ob, "</h%d>\n", level); }
+
+static void
 rndr_list(struct buf *ob, struct buf *text, int flags) {
 	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
 	if (text) bufput(ob, text->data, text->size);
@@ -94,6 +101,7 @@ xhtml_hrule(struct buf *ob) {
 struct mkd_renderer mkd_xhtml = {
 	rndr_blockcode,
 	rndr_blockquote,
+	rndr_header,
 	xhtml_hrule,
 	rndr_list,
 	rndr_listitem,
@@ -237,6 +245,25 @@ is_hrule(char *data, size_t size) {
 	return n >= 3; }
 
 
+/* is_headerline • returns whether the line is a setext-style hdr underline */
+static int
+is_headerline(char *data, size_t size) {
+	size_t i = 0;
+
+	/* test of level 1 header */
+	if (data[i] == '=') {
+		for (i = 1; i < size && data[i] == '='; i += 1);
+		while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+		return (i >= size || data[i] == '\n') ? 1 : 0; }
+
+	/* test of level 2 header */
+	if (data[i] == '-') {
+		for (i = 1; i < size && data[i] == '-'; i += 1);
+		while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+		return (i >= size || data[i] == '\n') ? 2 : 0; }
+
+	return 0; }
+
 
 /* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
 static void
@@ -354,6 +381,7 @@ static size_t
 parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 			char *data, size_t size) {
 	size_t i = 0, end = 0;
+	int level = 0;
 	struct buf work = { data, 0, 0, 0, 0 }; /* volatile working buffer */
 
 	while (i < size) {
@@ -361,15 +389,34 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 								end += 1);
 		if (is_empty(data + i, size - i))
 			break;
+		if ((level = is_headerline(data + i, size - i)) != 0)
+			break;
 		if (is_hrule(data + i, size - i)) {
 			end = i;
 			break; }
 		i = end; }
 
-	work.size = end;
+	work.size = i;
 	while (work.size && data[work.size - 1] == '\n')
 		work.size -= 1;
-	rndr->paragraph(ob, &work);
+	if (!level)
+		rndr->paragraph(ob, &work);
+	else {
+		if (work.size) {
+			size_t beg;
+			i = work.size;
+			work.size -= 1;
+			while (work.size && data[work.size] != '\n')
+				work.size -= 1;
+			beg = work.size + 1;
+			while (work.size && data[work.size - 1] == '\n')
+				work.size -= 1;
+			if (work.size) {
+				rndr->paragraph(ob, &work);
+				work.data += beg;
+				work.size = i - beg; }
+			else work.size = i; }
+		rndr->header(ob, &work, level); }
 	return end; }
 
 
