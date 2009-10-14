@@ -38,6 +38,14 @@ struct link_ref {
 	struct buf *	title; };
 
 
+/* render • structure containing one particular render */
+struct render {
+	struct mkd_renderer	make;
+	struct array		refs;
+	int			flags; };
+
+
+
 /********************
  * GENERIC RENDERER *
  ********************/
@@ -338,13 +346,13 @@ prefix_uli(char *data, size_t size) {
 
 
 /* parse_block • parsing of one block, returning next char to parse */
-static void parse_block(struct buf *ob, struct mkd_renderer *rndr,
+static void parse_block(struct buf *ob, struct render *rndr,
 			char *data, size_t size);
 
 
 /* parse_blockquote • hanldes parsing of a blockquote fragment */
 static size_t
-parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
+parse_blockquote(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end = 0, pre, work_size = 0;
 	char *work_data = 0;
@@ -372,13 +380,13 @@ parse_blockquote(struct buf *ob, struct mkd_renderer *rndr,
 		beg = end; }
 
 	parse_block(out, rndr, work_data, work_size);
-	rndr->blockquote(ob, out);
+	rndr->make.blockquote(ob, out);
 	return end; }
 
 
 /* parse_blockquote • hanldes parsing of a regular paragraph */
 static size_t
-parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
+parse_paragraph(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t i = 0, end = 0;
 	int level = 0;
@@ -400,7 +408,7 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 	while (work.size && data[work.size - 1] == '\n')
 		work.size -= 1;
 	if (!level)
-		rndr->paragraph(ob, &work);
+		rndr->make.paragraph(ob, &work);
 	else {
 		if (work.size) {
 			size_t beg;
@@ -412,17 +420,17 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 			while (work.size && data[work.size - 1] == '\n')
 				work.size -= 1;
 			if (work.size) {
-				rndr->paragraph(ob, &work);
+				rndr->make.paragraph(ob, &work);
 				work.data += beg;
 				work.size = i - beg; }
 			else work.size = i; }
-		rndr->header(ob, &work, level); }
+		rndr->make.header(ob, &work, level); }
 	return end; }
 
 
 /* parse_blockquote • hanldes parsing of a block-level code fragment */
 static size_t
-parse_blockcode(struct buf *ob, struct mkd_renderer *rndr,
+parse_blockcode(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end, pre;
 	struct buf *work = bufnew(WORK_UNIT);
@@ -445,14 +453,14 @@ parse_blockcode(struct buf *ob, struct mkd_renderer *rndr,
 	while (work->size && work->data[work->size - 1] == '\n')
 		work->size -= 1;
 	bufputc(work, '\n');
-	rndr->blockcode(ob, work);
+	rndr->make.blockcode(ob, work);
 	return beg; }
 
 
 /* parse_listitem • parsing of a single list item */
 /*	assuming initial prefix is already removed */
 static size_t
-parse_listitem(struct buf *ob, struct mkd_renderer *rndr,
+parse_listitem(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int *flags) {
 	struct buf *work = bufnew(WORK_UNIT);
 	size_t beg = 0, end, pre;
@@ -484,14 +492,14 @@ parse_listitem(struct buf *ob, struct mkd_renderer *rndr,
 		parse_block(wk2, rndr, work->data, work->size);
 		bufrelease(work);
 		work = wk2; }
-	rndr->listitem(ob, work, *flags);
+	rndr->make.listitem(ob, work, *flags);
 	bufrelease(work);
 	return beg; }
 
 
 /* parse_list • parsing ordered or unordered list block */
 static size_t
-parse_list(struct buf *ob, struct mkd_renderer *rndr,
+parse_list(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int flags) {
 	struct buf *work = bufnew(WORK_UNIT);
 	size_t i = 0, pre;
@@ -503,14 +511,14 @@ parse_list(struct buf *ob, struct mkd_renderer *rndr,
 		i += pre;
 		i += parse_listitem(work, rndr, data + i, size - i, &flags); }
 
-	rndr->list(ob, work, flags);
+	rndr->make.list(ob, work, flags);
 	bufrelease(work);
 	return i; }
 
 
 /* parse_atxheader • parsing of atx-style headers */
 static size_t
-parse_atxheader(struct buf *ob, struct mkd_renderer *rndr,
+parse_atxheader(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	int level = 0;
 	size_t i, end, skip;
@@ -526,14 +534,14 @@ parse_atxheader(struct buf *ob, struct mkd_renderer *rndr,
 	while (end && data[end - 1] == '#') end -= 1;
 	while (end && (data[end - 1] == ' ' || data[end - 1] == '\t')) end -= 1;
 	work.size = end - i;
-	rndr->header(ob, &work, level);
+	rndr->make.header(ob, &work, level);
 	return skip; }
 
 
 
 /* parse_block • parsing of one block, returning next char to parse */
 static void
-parse_block(struct buf *ob, struct mkd_renderer *rndr,
+parse_block(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end;
 	char *txt_data;
@@ -547,7 +555,7 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 			while (beg < size && data[beg] != '\n') beg += 1;
 			beg += 1; }
 		else if (is_hrule(txt_data, end)) {
-			rndr->hrule(ob);
+			rndr->make.hrule(ob);
 			while (beg < size && data[beg] != '\n') beg += 1;
 			beg += 1; }
 		else if (prefix_quote(txt_data, end))
@@ -570,17 +578,21 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 
 /* markdown • parses the input buffer and renders it into the output buffer */
 void
-markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndr, int flags){
-	struct array refs;
+markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndrer, int flg){
 	struct link_ref *lr;
 	struct buf *text = bufnew(TEXT_UNIT);
 	size_t i, beg, end;
+	struct render rndr;
+
+	/* filling the render structure */
+	rndr.make = *rndrer;
+	arr_init(&rndr.refs, sizeof (struct link_ref));
+	rndr.flags = flg;
 
 	/* first pass: looking for references, copying everything else */
-	arr_init(&refs, sizeof (struct link_ref));
 	beg = 0;
 	while (beg < ib->size) /* iterating over lines */
-		if (is_ref(ib->data, beg, ib->size, &end, &refs))
+		if (is_ref(ib->data, beg, ib->size, &end, &rndr.refs))
 			beg = end;
 		else { /* skipping to the next line */
 			end = beg;
@@ -606,12 +618,12 @@ markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndr, int flags){
 		bufputc(text, '\n');
 
 	/* second pass: actual rendering */
-	parse_block(ob, rndr, text->data, text->size);
+	parse_block(ob, &rndr, text->data, text->size);
 
 /* debug: printing the reference list */
 BUFPUTSL(ob, "(refs");
-lr = refs.base;
-for (i = 0; i < refs.size; i += 1) {
+lr = rndr.refs.base;
+for (i = 0; i < rndr.refs.size; i += 1) {
 	BUFPUTSL(ob, "\n\t(\"");
 	bufput(ob, lr->id->data, lr->id->size);
 	BUFPUTSL(ob, "\" \"");
