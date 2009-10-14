@@ -193,6 +193,13 @@ html_escape(struct buf *ob, char *data, size_t size) {
 		else bufputc(ob, data[i]); }
 
 
+/* cmp_link_ref • comparison function for link_ref sorted arrays */
+static int
+cmp_link_ref(void *array_entry, void *key) {
+	struct link_ref *lr = array_entry;
+	return bufcasecmp(lr->id, key); }
+
+
 
 /****************************
  * INLINE PARSING FUNCTIONS *
@@ -793,12 +800,14 @@ parse_block(struct buf *ob, struct render *rndr,
 /* is_ref • returns whether a line is a reference or not */
 static int
 is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
+	int n;
 	size_t i = beg;
 	size_t id_offset, id_end;
 	size_t link_offset, link_end;
 	size_t title_offset, title_end;
 	size_t line_end;
 	struct link_ref *lr;
+	struct buf id = { 0, 0, 0, 0, 0 }; /* volatile buf for id search */
 
 	/* up to 3 optional leading spaces */
 	while (i < beg + 3 && i < end && data[i] == ' ') i += 1;
@@ -872,7 +881,11 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 
 	/* a valid ref has been found, filling-in return structures */
 	if (last) *last = line_end;
-	if (refs && (lr = arr_item(refs, arr_newitem(refs))) != 0) {
+	if (!refs) return 1;
+	id.data = data + id_offset;
+	id.size = id_end - id_offset;
+	n = arr_sorted_find_i(refs, &id, cmp_link_ref);
+	if (arr_insert(refs, 1, n) && (lr = arr_item(refs, n)) != 0) {
 		lr->id = bufnew(id_end - id_offset);
 		bufput(lr->id, data + id_offset, id_end - id_offset);
 		lr->link = bufnew(link_end - link_offset);
@@ -939,12 +952,12 @@ BUFPUTSL(ob, "(refs");
 lr = rndr.refs.base;
 for (i = 0; i < rndr.refs.size; i += 1) {
 	BUFPUTSL(ob, "\n\t(\"");
-	bufput(ob, lr->id->data, lr->id->size);
+	bufput(ob, lr[i].id->data, lr[i].id->size);
 	BUFPUTSL(ob, "\" \"");
-	bufput(ob, lr->link->data, lr->link->size);
-	if (lr->title) {
+	bufput(ob, lr[i].link->data, lr[i].link->size);
+	if (lr[i].title) {
 		BUFPUTSL(ob, "\" \"");
-		bufput(ob, lr->title->data, lr->title->size); }
+		bufput(ob, lr[i].title->data, lr[i].title->size); }
 	BUFPUTSL(ob, "\")"); }
 BUFPUTSL(ob, ")\n"); }
 
