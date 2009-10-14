@@ -912,15 +912,18 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	id.size = id_end - id_offset;
 	n = arr_sorted_find_i(refs, &id, cmp_link_ref);
 	if (arr_insert(refs, 1, n) && (lr = arr_item(refs, n)) != 0) {
+		struct buf *work = bufnew(WORK_UNIT);
 		lr->id = bufnew(id_end - id_offset);
 		bufput(lr->id, data + id_offset, id_end - id_offset);
-		lr->link = bufnew(link_end - link_offset);
-		bufput(lr->link, data + link_offset, link_end - link_offset);
+		attr_escape(work, data + link_offset, link_end - link_offset);
+		lr->link = bufdup(work, 1);
 		if (title_end > title_offset) {
-			lr->title = bufnew(title_end - title_offset);
-			bufput(lr->title, data + title_offset,
-						title_end - title_offset); }
-		else lr->title = 0; }
+			work->size = 0;
+			attr_escape(work, data + title_offset,
+						title_end - title_offset);
+			lr->title = bufdup(work, 1); }
+		else lr->title = 0;
+		bufrelease(work); }
 	return 1; }
 
 
