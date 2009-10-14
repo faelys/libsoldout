@@ -216,6 +216,23 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 			if (i + 1 < size) bufputc(ob, data[i + 1]);
 			i += 2; }
 
+		/* entity check: are considered valid entities anything
+		 *		matching &#?[A-Za-z0-9]+;    */
+		else if (data[i] == '&') {
+			end = i + 1;
+			if (end < size && data[end] == '#') end += 1;
+			while (end < size
+			&& ((data[end] >= '0' && data[end] <= '9')
+			||  (data[end] >= 'a' && data[end] <= 'z')
+			||  (data[end] >= 'A' && data[end] <= 'Z')))
+				end += 1;
+			/* an '&' will always be put */
+			bufputc(ob, '&');
+			i += 1;
+			/* adding the "amp;" part if needed */
+			if (end >= size || data[end] != ';')
+				BUFPUTSL(ob, "amp;"); }
+
 		/* should never happen */
 		else {
 			printf("Unhandled active char '%c' (%d)\n",
