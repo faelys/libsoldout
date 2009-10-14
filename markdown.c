@@ -104,6 +104,10 @@ xhtml_hrule(struct buf *ob) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<hr />\n"); }
 
+static void
+xhtml_linebreak(struct buf *ob) {
+	BUFPUTSL(ob, "<br />\n"); }
+
 
 /* exported renderer structure */
 struct mkd_renderer mkd_xhtml = {
@@ -111,110 +115,73 @@ struct mkd_renderer mkd_xhtml = {
 	rndr_blockquote,
 	rndr_header,
 	xhtml_hrule,
+	xhtml_linebreak,
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph };
 
 
 
-/***************************
- * STATIC HELPER FUNCTIONS *
- ***************************/
+/****************************
+ * INLINE PARSING FUNCTIONS *
+ ****************************/
 
-/* is_ref • returns whether a line is a reference or not */
-static int
-is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
-	size_t i = beg;
-	size_t id_offset, id_end;
-	size_t link_offset, link_end;
-	size_t title_offset, title_end;
-	size_t line_end;
-	struct link_ref *lr;
+/* inline_active • char map of active inline characters */
+static const char inline_active[256] = {
+/*      0  1  2  3  4  5  6  7    8  9  A  B  C  D  E  F */
+/* 0 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 1, 0, 0, 0, 0, 0, /* '\n' */
+/* 1 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* 2 */	0, 0, 0, 0, 0, 0, 1, 0,   0, 0, 1, 0, 0, 0, 0, 0, /* '&', '*' */
+/* 3 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 1, 0, 1, 0, /* '<', '>' */
+/* 4 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* 5 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 1, 1, 0, 0, 1, /* '[', '\\', '_' */
+/* 6 */	1, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, /* '`' */
+/* 7 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* 8 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* 9 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* A */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* B */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* C */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* D */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* E */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
+/* F */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0 };
 
-	/* up to 3 optional leading spaces */
-	while (i < beg + 3 && i < end && data[i] == ' ') i += 1;
-	if (i >= end || i >= beg + 3) return 0;
 
-	/* id part: anything but a newline between brackets */
-	if (data[i] != '[') return 0;
-	i += 1;
-	id_offset = i;
-	while (i < end && data[i] != '\n' && data[i] != '\r' && data[i] != ']')
-		i += 1;
-	if (i >= end || data[i] != ']') return 0;
-	id_end = i;
+/* parse_inline • parses inline markdown elements */
+static void
+parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
+	size_t i = 0, end;
 
-	/* spacer: colon (space | tab)* newline? (space | tab)* */
-	i += 1;
-	if (i >= end || data[i] != ':') return 0;
-	i += 1;
-	while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1;
-	if (i < end && (data[i] == '\n' || data[i] == '\r')) {
-		i += 1;
-		if (i < end && data[i] == '\r' && data[i - 1] == '\n') i += 1; }
-	while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1;
-	if (i >= end) return 0;
+	for (;;) {
+		/* copying inactive chars into the output */
+		end = i;
+		while (end < size && !inline_active[(unsigned char)data[end]])
+			end += 1;
+		bufput(ob, data + i, end - i);
+		i = end;
+		if (end >= size) break;
 
-	/* link: whitespace-free sequence, optionally between angle brackets */
-	if (data[i] == '<') i += 1;
-	link_offset = i;
-	while (i < end && data[i] != ' ' && data[i] != '\t'
-			&& data[i] != '\n' && data[i] != '\r') i += 1;
-	if (data[i - 1] == '>') link_end = i - 1;
-	else link_end = i;
+		/* line break */
+		if (data[i] == '\n') {
+			if (i >= 2
+			&& data[i - 1] == ' ' && data[i - 2] == ' ') {
+				ob->size -= 1;
+				rndr->make.linebreak(ob); }
+			else bufputc(ob, '\n');
+			i += 1; }
 
-	/* optional spacer: (space | tab)* (newline | '\'' | '"' | '(' ) */
-	while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1;
-	if (i < end && data[i] != '\n' && data[i] != '\r'
-			&& data[i] != '\'' && data[i] != '"' && data[i] != '(')
-		return 0;
-	line_end = 0;
-	/* computing end-of-line */
-	if (i >= end || data[i] == '\r' || data[i] == '\n') line_end = i;
-	if (i + 1 < end && data[i] == '\n' && data[i + 1] == '\r')
-		line_end = i + 1;
+		/* should never happen */
+		else {
+			printf("Unhandled active char '%c' (%d)\n",
+				data[i], (int)data[i]);
+			bufputc(ob, data[i]);
+			i += 1; } } }
 
-	/* optional (space|tab)* spacer after a newline */
-	if (line_end) {
-		i = line_end + 1;
-		while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1; }
 
-	/* optional title: any non-newline sequence enclosed in '"()
-					alone on its line */
-	title_offset = title_end = 0;
-	if (i + 1 < end
-	&& (data[i] == '\'' || data[i] == '"' || data[i] == '(')) {
-		i += 1;
-		title_offset = i;
-		/* looking for EOL */
-		while (i < end && data[i] != '\n' && data[i] != '\r') i += 1;
-		if (i + 1 < end && data[i] == '\n' && data[i + 1] == '\r')
-			title_end = i + 1;
-		else	title_end = i;
-		/* stepping back */
-		i -= 1;
-		while (i > title_offset && (data[i] == ' ' || data[i] == '\t'))
-			i -= 1;
-		if (i > title_offset
-		&& (data[i] == '\'' || data[i] == '"' || data[i] == ')')) {
-			line_end = title_end;
-			title_end = i; } }
-	if (!line_end) return 0; /* garbage after the link */
 
-	/* a valid ref has been found, filling-in return structures */
-	if (last) *last = line_end;
-	if (refs && (lr = arr_item(refs, arr_newitem(refs))) != 0) {
-		lr->id = bufnew(id_end - id_offset);
-		bufput(lr->id, data + id_offset, id_end - id_offset);
-		lr->link = bufnew(link_end - link_offset);
-		bufput(lr->link, data + link_offset, link_end - link_offset);
-		if (title_end > title_offset) {
-			lr->title = bufnew(title_end - title_offset);
-			bufput(lr->title, data + title_offset,
-						title_end - title_offset); }
-		else lr->title = 0; }
-	return 1; }
-
+/*********************************
+ * BLOCK-LEVEL PARSING FUNCTIONS *
+ *********************************/
 
 /* is_empty • returns whether the line is blank */
 static int
@@ -407,8 +374,11 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 	work.size = i;
 	while (work.size && data[work.size - 1] == '\n')
 		work.size -= 1;
-	if (!level)
-		rndr->make.paragraph(ob, &work);
+	if (!level) {
+		struct buf *tmp = bufnew(WORK_UNIT);
+		parse_inline(tmp, rndr, work.data, work.size);
+		rndr->make.paragraph(ob, tmp);
+		bufrelease(tmp); }
 	else {
 		if (work.size) {
 			size_t beg;
@@ -420,7 +390,10 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 			while (work.size && data[work.size - 1] == '\n')
 				work.size -= 1;
 			if (work.size) {
-				rndr->make.paragraph(ob, &work);
+				struct buf *tmp = bufnew(WORK_UNIT);
+				parse_inline(tmp, rndr, work.data, work.size);
+				rndr->make.paragraph(ob, tmp);
+				bufrelease(tmp);
 				work.data += beg;
 				work.size = i - beg; }
 			else work.size = i; }
@@ -569,6 +542,106 @@ parse_block(struct buf *ob, struct render *rndr,
 						MKD_LIST_ORDERED);
 		else
 			beg += parse_paragraph(ob, rndr, txt_data, end); } }
+
+
+
+/***************************
+ * STATIC HELPER FUNCTIONS *
+ ***************************/
+
+/* is_ref • returns whether a line is a reference or not */
+static int
+is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
+	size_t i = beg;
+	size_t id_offset, id_end;
+	size_t link_offset, link_end;
+	size_t title_offset, title_end;
+	size_t line_end;
+	struct link_ref *lr;
+
+	/* up to 3 optional leading spaces */
+	while (i < beg + 3 && i < end && data[i] == ' ') i += 1;
+	if (i >= end || i >= beg + 3) return 0;
+
+	/* id part: anything but a newline between brackets */
+	if (data[i] != '[') return 0;
+	i += 1;
+	id_offset = i;
+	while (i < end && data[i] != '\n' && data[i] != '\r' && data[i] != ']')
+		i += 1;
+	if (i >= end || data[i] != ']') return 0;
+	id_end = i;
+
+	/* spacer: colon (space | tab)* newline? (space | tab)* */
+	i += 1;
+	if (i >= end || data[i] != ':') return 0;
+	i += 1;
+	while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	if (i < end && (data[i] == '\n' || data[i] == '\r')) {
+		i += 1;
+		if (i < end && data[i] == '\r' && data[i - 1] == '\n') i += 1; }
+	while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	if (i >= end) return 0;
+
+	/* link: whitespace-free sequence, optionally between angle brackets */
+	if (data[i] == '<') i += 1;
+	link_offset = i;
+	while (i < end && data[i] != ' ' && data[i] != '\t'
+			&& data[i] != '\n' && data[i] != '\r') i += 1;
+	if (data[i - 1] == '>') link_end = i - 1;
+	else link_end = i;
+
+	/* optional spacer: (space | tab)* (newline | '\'' | '"' | '(' ) */
+	while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	if (i < end && data[i] != '\n' && data[i] != '\r'
+			&& data[i] != '\'' && data[i] != '"' && data[i] != '(')
+		return 0;
+	line_end = 0;
+	/* computing end-of-line */
+	if (i >= end || data[i] == '\r' || data[i] == '\n') line_end = i;
+	if (i + 1 < end && data[i] == '\n' && data[i + 1] == '\r')
+		line_end = i + 1;
+
+	/* optional (space|tab)* spacer after a newline */
+	if (line_end) {
+		i = line_end + 1;
+		while (i < end && (data[i] == ' ' || data[i] == '\t')) i += 1; }
+
+	/* optional title: any non-newline sequence enclosed in '"()
+					alone on its line */
+	title_offset = title_end = 0;
+	if (i + 1 < end
+	&& (data[i] == '\'' || data[i] == '"' || data[i] == '(')) {
+		i += 1;
+		title_offset = i;
+		/* looking for EOL */
+		while (i < end && data[i] != '\n' && data[i] != '\r') i += 1;
+		if (i + 1 < end && data[i] == '\n' && data[i + 1] == '\r')
+			title_end = i + 1;
+		else	title_end = i;
+		/* stepping back */
+		i -= 1;
+		while (i > title_offset && (data[i] == ' ' || data[i] == '\t'))
+			i -= 1;
+		if (i > title_offset
+		&& (data[i] == '\'' || data[i] == '"' || data[i] == ')')) {
+			line_end = title_end;
+			title_end = i; } }
+	if (!line_end) return 0; /* garbage after the link */
+
+	/* a valid ref has been found, filling-in return structures */
+	if (last) *last = line_end;
+	if (refs && (lr = arr_item(refs, arr_newitem(refs))) != 0) {
+		lr->id = bufnew(id_end - id_offset);
+		bufput(lr->id, data + id_offset, id_end - id_offset);
+		lr->link = bufnew(link_end - link_offset);
+		bufput(lr->link, data + link_offset, link_end - link_offset);
+		if (title_end > title_offset) {
+			lr->title = bufnew(title_end - title_offset);
+			bufput(lr->title, data + title_offset,
+						title_end - title_offset); }
+		else lr->title = 0; }
+	return 1; }
 
 
 
