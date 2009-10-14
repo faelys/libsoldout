@@ -270,23 +270,49 @@ parse_link(struct buf *ob, struct render *rndr, char *data, size_t size,
 		while (link_e > link_b
 		&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
 			link_e -= 1;
+
+		/* building escaped link and title */
+		if (link_e > link_b) {
+			link = bufnew(WORK_UNIT);
+			attr_escape(link, data + link_b, link_e - link_b); }
+		if (title_e > title_b) {
+			title = bufnew(WORK_UNIT);
+			attr_escape(title, data + title_b, title_e - title_b);}
+
 		i += 1; }
 
-	/* TODO: reference style link */
+	/* reference style link */
+	else if (data[i] == '[') {
+		struct buf id = { 0, 0, 0, 0, 0 };
+		struct link_ref *lr;
+
+		/* looking for the id */
+		i += 1;
+		link_b = i;
+		while (i < size && data[i] != ']') i += 1;
+		if (i >= size) return 0;
+		link_e = i;
+
+		/* finding the link_ref */
+		id.data = data + link_b;
+		id.size = link_e - link_b;
+		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
+		if (!lr) return 0;
+
+		/* keeping link and title from link_ref */
+		bufset(&link, lr->link);
+		bufset(&title, lr->title);
+		i += 1; }
+
+
+	/* invalid link */
+	else return 0;
 
 	/* building content: img alt is escaped, link content is parsed */
 	if (txt_e > 1) {
 		content = bufnew(WORK_UNIT);
 		if (is_img) attr_escape(content, data + 1, txt_e - 1);
 		else parse_inline(content, rndr, data + 1, txt_e - 1); }
-
-	/* building escaped link and title */
-	if (link_e > link_b) {
-		link = bufnew(WORK_UNIT);
-		attr_escape(link, data + link_b, link_e - link_b); }
-	if (title_e > title_b) {
-		title = bufnew(WORK_UNIT);
-		attr_escape(title, data + title_b, title_e - title_b); }
 
 	/* calling the relevant rendering function */
 	if (is_img) rndr->make.image(ob, link, title, content);
