@@ -78,6 +78,22 @@ rndr_header(struct buf *ob, struct buf *text, int level) {
 	bufprintf(ob, "</h%d>\n", level); }
 
 static void
+rndr_link(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *content) {
+	BUFPUTSL(ob, "<a");
+	if (link && link->size) {
+		BUFPUTSL(ob, " href=\"");
+		bufput(ob, link->data, link->size);
+		bufputc(ob, '"'); }
+	if (title && title->size) {
+		BUFPUTSL(ob, " title=\"");
+		bufput(ob, title->data, title->size);
+		bufputc(ob, '"'); }
+	bufputc(ob, '>');
+	if (content && content->size) bufput(ob, content->data, content->size);
+	BUFPUTSL(ob, "</a>"); }
+
+static void
 rndr_list(struct buf *ob, struct buf *text, int flags) {
 	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
 	if (text) bufput(ob, text->data, text->size);
@@ -115,6 +131,20 @@ xhtml_hrule(struct buf *ob) {
 	BUFPUTSL(ob, "<hr />\n"); }
 
 static void
+xhtml_image(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *alt) {
+	if (!link || !link->size) return;
+	BUFPUTSL(ob, "<img src=\"");
+	bufput(ob, link->data, link->size);
+	BUFPUTSL(ob, "\" alt=\"");
+	if (alt && alt->size)
+		bufput(ob, alt->data, alt->size);
+	if (title && title->size) {
+		BUFPUTSL(ob, "\" title=\"");
+		bufput(ob, title->data, title->size); }
+	BUFPUTSL(ob, "\" />"); }
+
+static void
 xhtml_linebreak(struct buf *ob) {
 	BUFPUTSL(ob, "<br />\n"); }
 
@@ -126,7 +156,9 @@ struct mkd_renderer mkd_xhtml = {
 	rndr_codespan,
 	rndr_header,
 	xhtml_hrule,
+	xhtml_image,
 	xhtml_linebreak,
+	rndr_link,
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
@@ -137,6 +169,18 @@ struct mkd_renderer mkd_xhtml = {
 /***************************
  * STATIC HELPER FUNCTIONS *
  ***************************/
+
+/* attr_escape • copy data into a buffer, escaping '"', '<' '&' and '>' */
+static void
+attr_escape(struct buf *ob, char *data, size_t size) {
+	size_t i;
+	for (i = 0; i < size; i += 1)
+		if (data[i] == '&') BUFPUTSL(ob, "&amp;");
+		else if (data[i] == '<') BUFPUTSL(ob, "&lt;");
+		else if (data[i] == '>') BUFPUTSL(ob, "&gt;");
+		else if (data[i] == '"') BUFPUTSL(ob, "&quot;");
+		else bufputc(ob, data[i]); }
+
 
 /* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
 static void
@@ -153,6 +197,96 @@ html_escape(struct buf *ob, char *data, size_t size) {
 /****************************
  * INLINE PARSING FUNCTIONS *
  ****************************/
+
+/* predeclaration */
+static void
+parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size);
+
+
+/* parse_link • parsing a link or an image */
+static size_t
+parse_link(struct buf *ob, struct render *rndr, char *data, size_t size,
+				int is_img) {
+	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0;
+	struct buf *content = 0;
+	struct buf *link = 0;
+	struct buf *title = 0;
+
+	/* looking for the end of the first part: [^\]\] */
+	while (i < size && (data[i] != ']' || data[i - 1] == '\\')) i += 1;
+	if (i >= size) return 0;
+	txt_e = i;
+	i += 1;
+
+	/* skip any amount of whitespace or newline */
+	/* (this is much more laxist than original markdown syntax) */
+	while (i < size
+	&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+		i += 1;
+	if (i >= size) return 0;
+
+	/* inline style link */
+	if (data[i] == '(') {
+		/* skipping initial whitespace */
+		i += 1;
+		while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+		link_b = i;
+
+		/* looking for link end: ' " ) */
+		while (i < size
+		&& data[i] != '\'' && data[i] != '"' && data[i] != ')')
+			i += 1;
+		if (i >= size) return 0;
+		link_e = i;
+
+		/* looking for title end if present */
+		if (data[i] == '\'' || data[i] == '"') {
+			i += 1;
+			title_b = i;
+			while (i < size
+			&& data[i] != '\'' && data[i] != '"' && data[i] != ')')
+				i += 1;
+			if (i >= size) return 0;
+			if (data[i] == ')') {
+				title_b = 0;
+				link_e = i; }
+			else { /* allow only whitespace after the title */
+				title_e = i;
+				i += 1;
+				while (i < size
+				&& (data[i] == ' ' || data[i] == '\t'))
+					i += 1;
+				if (i >= size || data[i] != ')')
+					return 0; } }
+
+		/* remove whitespace at the end of the link */
+		while (link_e > link_b
+		&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
+			link_e -= 1;
+		i += 1; }
+
+	/* TODO: reference style link */
+
+	/* building content: img alt is escaped, link content is parsed */
+	if (txt_e > 1) {
+		content = bufnew(WORK_UNIT);
+		if (is_img) attr_escape(content, data + 1, txt_e - 1);
+		else parse_inline(content, rndr, data + 1, txt_e - 1); }
+
+	/* building escaped link and title */
+	if (link_e > link_b) {
+		link = bufnew(WORK_UNIT);
+		attr_escape(link, data + link_b, link_e - link_b); }
+	if (title_e > title_b) {
+		title = bufnew(WORK_UNIT);
+		attr_escape(title, data + title_b, title_e - title_b); }
+
+	/* calling the relevant rendering function */
+	if (is_img) rndr->make.image(ob, link, title, content);
+	else rndr->make.link(ob, link, title, content);
+
+	return i; }
+
 
 /* tag_length • returns the length of the given tag, or 0 is it's not valid */
 static size_t
@@ -273,6 +407,17 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 		else if (data[i] == '>') {
 			BUFPUTSL(ob, "&gt;");
 			i += 1; }
+
+		/* '[' is for a link or an image */
+		else if (data[i] == '[') {
+			int img = (i && data[i - 1] == '!');
+			if (img) ob->size -= 1;
+			end = parse_link(ob, rndr, data + i, size - i, img);
+			if (!end) { /* invalid link */
+				if (img) ob->size += 1;
+				bufputc(ob, '[');
+				i += 1; }
+			else i += end; }
 
 		/* should never happen */
 		else {

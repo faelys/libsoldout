@@ -33,7 +33,11 @@ struct mkd_renderer {
 	void (*codespan)(struct buf *ob, struct buf *text);
 	void (*header)(struct buf *ob, struct buf *text, int level);
 	void (*hrule)(struct buf *ob);
+	void (*image)(struct buf *ob, struct buf *link, struct buf *title,
+						struct buf *alt);
 	void (*linebreak)(struct buf *ob);
+	void (*link)(struct buf *ob, struct buf *link, struct buf *title,
+						struct buf *content);
 	void (*list)(struct buf *ob, struct buf *text, int flags);
 	void (*listitem)(struct buf *ob, struct buf *text, int flags);
 	void (*paragraph)(struct buf *ob, struct buf *text);
