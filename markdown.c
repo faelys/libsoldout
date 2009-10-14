@@ -387,11 +387,11 @@ parse_paragraph(struct buf *ob, struct mkd_renderer *rndr,
 	while (i < size) {
 		for (end = i + 1; end < size && data[end - 1] != '\n';
 								end += 1);
-		if (is_empty(data + i, size - i))
+		if (is_empty(data + i, size - i)
+		|| (level = is_headerline(data + i, size - i)) != 0)
 			break;
-		if ((level = is_headerline(data + i, size - i)) != 0)
-			break;
-		if (is_hrule(data + i, size - i)) {
+		if (data[i] == '#'
+		|| is_hrule(data + i, size - i)) {
 			end = i;
 			break; }
 		i = end; }
@@ -508,6 +508,29 @@ parse_list(struct buf *ob, struct mkd_renderer *rndr,
 	return i; }
 
 
+/* parse_atxheader • parsing of atx-style headers */
+static size_t
+parse_atxheader(struct buf *ob, struct mkd_renderer *rndr,
+			char *data, size_t size) {
+	int level = 0;
+	size_t i, end, skip;
+	struct buf work = { data, 0, 0, 0, 0 };
+
+	if (!size || data[0] != '#') return 0;
+	while (level < size && level < 6 && data[level] == '#') level += 1;
+	for (i = level; i < size && (data[i] == ' ' || data[i] == '\t');
+							i += 1);
+	work.data = data + i;
+	for (end = i; end < size && data[end] != '\n'; end += 1);
+	skip = end;
+	while (end && data[end - 1] == '#') end -= 1;
+	while (end && (data[end - 1] == ' ' || data[end - 1] == '\t')) end -= 1;
+	work.size = end - i;
+	rndr->header(ob, &work, level);
+	return skip; }
+
+
+
 /* parse_block • parsing of one block, returning next char to parse */
 static void
 parse_block(struct buf *ob, struct mkd_renderer *rndr,
@@ -518,7 +541,9 @@ parse_block(struct buf *ob, struct mkd_renderer *rndr,
 	while (beg < size) {
 		txt_data = data + beg;
 		end = size - beg;
-		if (is_empty(txt_data, end)) {
+		if (data[beg] == '#')
+			beg += parse_atxheader(ob, rndr, txt_data, end);
+		else if (is_empty(txt_data, end)) {
 			while (beg < size && data[beg] != '\n') beg += 1;
 			beg += 1; }
 		else if (is_hrule(txt_data, end)) {
