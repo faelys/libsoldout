@@ -36,7 +36,8 @@ struct mkd_renderer {
 	void (*linebreak)(struct buf *ob);
 	void (*list)(struct buf *ob, struct buf *text, int flags);
 	void (*listitem)(struct buf *ob, struct buf *text, int flags);
-	void (*paragraph)(struct buf *ob, struct buf *text); };
+	void (*paragraph)(struct buf *ob, struct buf *text);
+	void (*raw_html_tag)(struct buf *ob, struct buf *tag); };
 
 
 
@@ -52,6 +53,10 @@ extern struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
  * FLAGS *
  *********/
 
+/* parser flags */
+#define MKD_DISABLE_RAW_HTML	1  /* if set, '<' and '>' will always be esc */
+
+/* list/listitem flags */
 #define MKD_LIST_ORDERED	1
 #define MKD_LI_BLOCK		2  /* <li> containing block data */
 

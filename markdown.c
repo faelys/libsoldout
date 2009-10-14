@@ -99,6 +99,10 @@ rndr_paragraph(struct buf *ob, struct buf *text) {
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</p>\n"); }
 
+static void
+rndr_raw(struct buf *ob, struct buf *text) {
+	bufput(ob, text->data, text->size); }
+
 
 
 /**********************
@@ -125,7 +129,8 @@ struct mkd_renderer mkd_xhtml = {
 	xhtml_linebreak,
 	rndr_list,
 	rndr_listitem,
-	rndr_paragraph };
+	rndr_paragraph,
+	rndr_raw };
 
 
 
@@ -148,6 +153,26 @@ html_escape(struct buf *ob, char *data, size_t size) {
 /****************************
  * INLINE PARSING FUNCTIONS *
  ****************************/
+
+/* tag_length • returns the length of the given tag, or 0 is it's not valid */
+static size_t
+tag_length(char *data, size_t size) {
+	size_t i;
+
+	/* a valid tag can't be shorter than 3 chars */
+	if (size < 3) return 0;
+
+	/* begins with a '<' optionally followed by '/', followed by letter */
+	if (data[0] != '<') return 0;
+	i = (data[1] == '/') ? 2 : 1;
+	if ((data[i] < 'a' || data[i] > 'z')
+	&&  (data[i] < 'A' || data[i] > 'Z')) return 0;
+
+	/* looking for sometinhg looking like a tag end */
+	while (i < size && data[i] != '>') i += 1;
+	if (i >= size) return 0;
+	return i + 1; }
+
 
 /* inline_active • char map of active inline characters */
 static const char inline_active[256] = {
@@ -232,6 +257,22 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 			/* adding the "amp;" part if needed */
 			if (end >= size || data[end] != ';')
 				BUFPUTSL(ob, "amp;"); }
+
+		/* litteral tag: if allowed, disable parsing, otherwise esc */
+		else if (data[i] == '<') {
+			if (!rndr->make.raw_html_tag
+			|| (end = tag_length(data + i, size - i)) == 0) {
+				BUFPUTSL(ob, "&lt;");
+				i += 1; }
+			else {
+				struct buf work = { data + i, end, 0, 0, 0 };
+				rndr->make.raw_html_tag(ob, &work);
+				i += end; } }
+
+		/* '>' encountered outside of a tag is always escaped */
+		else if (data[i] == '>') {
+			BUFPUTSL(ob, "&gt;");
+			i += 1; }
 
 		/* should never happen */
 		else {
