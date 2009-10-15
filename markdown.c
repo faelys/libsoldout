@@ -464,20 +464,34 @@ char_linebreak(struct buf *ob, struct render *rndr,
 static size_t
 char_codespan(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
-	size_t end = 1;
-	struct buf *work;
+	size_t end, nb = 0, i, f_begin, f_end;
+	struct buf *work = 0;
 
-	while (end < size && data[end] != '`') end += 1;
-	if (end >= size) return 0; /* no matching backtick */
-	if (end == 2) { /* empty code span */
-		BUFPUTSL(ob, "``");
-		return 2; }
+	/* counting the number of backticks in the delimiter */
+	while (nb < size && data[nb] == '`') nb += 1;
+
+	/* finding the next delimiter */
+	i = 0;
+	for (end = nb; end < size && i < nb; end += 1)
+		if (data[end] == '`') i += 1;
+		else i = 0;
+	if (i < nb && end >= size) return 0; /* no matching delimiter */
+
+	/* trimming outside whitespaces */
+	f_begin = nb;
+	while (f_begin < end && (data[f_begin] == ' ' || data[f_begin] == '\t'))
+		f_begin += 1;
+	f_end = end - nb;
+	while (f_end > nb && (data[f_end-1] == ' ' || data[f_end-1] == '\t'))
+		f_end -= 1;
+
 	/* real code span */
-	work = bufnew(WORK_UNIT);
-	html_escape(work, data + 1, end - 1);
+	if (f_begin < f_end) {
+		work = bufnew(WORK_UNIT);
+		html_escape(work, data + f_begin, f_end - f_begin); }
 	rndr->make.codespan(ob, work, rndr->make.opaque);
 	bufrelease(work);
-	return end + 1; }
+	return end; }
 
 
 /* char_escape • '\\' backslash escape */
@@ -1190,6 +1204,7 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	/* second pass: actual rendering */
 	parse_block(ob, &rndr, text->data, text->size);
 
+#if 0
 /* debug: printing the reference list */
 BUFPUTSL(ob, "(refs");
 lr = rndr.refs.base;
@@ -1203,6 +1218,7 @@ for (i = 0; i < rndr.refs.size; i += 1) {
 		bufput(ob, lr[i].title->data, lr[i].title->size); }
 	BUFPUTSL(ob, "\")"); }
 BUFPUTSL(ob, ")\n");
+#endif
 
 	/* clean-up */
 	bufrelease(text);
