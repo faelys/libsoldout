@@ -22,6 +22,7 @@
 
 #include <stdio.h> /* only used for debug output */
 #include <string.h>
+#include <strings.h> /* for strncasecmp */
 
 #define TEXT_UNIT 64	/* unit for the copy of the input buffer */
 #define WORK_UNIT 64	/* block-level working buffer */
@@ -59,6 +60,16 @@ struct render {
 /********************
  * GENERIC RENDERER *
  ********************/
+
+static int
+rndr_autolink(struct buf *ob, struct buf *link, void *opaque) {
+	if (!link || !link->size) return 0;
+	BUFPUTSL(ob, "<a href=\"");
+	bufput(ob, link->data, link->size);
+	BUFPUTSL(ob, "\">");
+	bufput(ob, link->data, link->size);
+	BUFPUTSL(ob, "</a>");
+	return 1; }
 
 static void
 rndr_blockcode(struct buf *ob, struct buf *text, void *opaque) {
@@ -123,6 +134,7 @@ rndr_link(struct buf *ob, struct buf *link, struct buf *title,
 
 static void
 rndr_list(struct buf *ob, struct buf *text, int flags, void *opaque) {
+	if (ob->size) bufputc(ob, '\n');
 	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
 	if (text) bufput(ob, text->data, text->size);
 	bufput(ob, flags & MKD_LIST_ORDERED ? "</ol>\n" : "</ul>\n", 6); }
@@ -198,6 +210,7 @@ const struct mkd_renderer mkd_xhtml = {
 	rndr_listitem,
 	rndr_paragraph,
 
+	rndr_autolink,
 	rndr_codespan,
 	rndr_double_emphasis,
 	rndr_emphasis,
@@ -251,10 +264,27 @@ cmp_link_ref(void *array_entry, void *key) {
  * INLINE PARSING FUNCTIONS *
  ****************************/
 
+/* is_mail_autolink • looks for the address part of a mail autolink and '>' */
+/* this is less strict than the original markdown e-mail address matching */
+static size_t
+is_mail_autolink(char *data, size_t size) {
+	size_t i = 0, nb = 0;
+	/* address is assumed to be: [-@._a-zA-Z0-9]+ with exactly one '@' */
+	while (i < size && (data[i] == '-' || data[i] == '.'
+	|| data[i] == '_' || data[i] == '@'
+	|| (data[i] >= 'a' && data[i] <= 'z')
+	|| (data[i] >= 'A' && data[i] <= 'Z')
+	|| (data[i] >= '0' && data[i] <= '9'))) {
+		if (data[i] == '@') nb += 1;
+		i += 1; }
+	if (i >= size || data[i] != '>' || nb != 1) return 0;
+	return i + 1; }
+
+
 /* tag_length • returns the length of the given tag, or 0 is it's not valid */
 static size_t
-tag_length(char *data, size_t size) {
-	size_t i;
+tag_length(char *data, size_t size, int *is_autolink) {
+	size_t i, j;
 
 	/* a valid tag can't be shorter than 3 chars */
 	if (size < 3) return 0;
@@ -264,6 +294,36 @@ tag_length(char *data, size_t size) {
 	i = (data[1] == '/') ? 2 : 1;
 	if ((data[i] < 'a' || data[i] > 'z')
 	&&  (data[i] < 'A' || data[i] > 'Z')) return 0;
+
+	/* scheme test */
+	*is_autolink = 0;
+	if (size > 6 && strncasecmp(data + 1, "http", 4) == 0 && (data[5] == ':'
+	|| ((data[5] == 's' || data[5] == 'S') && data[6] == ':'))) {
+		i = data[5] == ':' ? 6 : 7;
+		*is_autolink = 1; }
+	else if (size > 5 && strncasecmp(data + 1, "ftp:", 4) == 0) {
+		i = 5;
+		*is_autolink = 1; }
+	else if (size > 7 && strncasecmp(data + 1, "mailto:", 7) == 0) {
+		i = 8;
+		*is_autolink = 0; /* should go to the address test */ }
+
+	/* completing autolink test: no whitespace or ' or " */
+	if (i >= size || i == '>')
+		*is_autolink = 0;
+	else if (*is_autolink) {
+		j = i;
+		while (i < size && data[i] != '>' && data[i] != '\''
+		&& data[i] != '"' && data[i] != ' ' && data[i] != '\t'
+		&& data[i] != '\t')
+			i += 1;
+		if (i >= size) return 0;
+		if (i > j && data[i] == '>') return i + 1;
+		/* one of the forbidden chars has been found */
+		*is_autolink = 0; }
+	else if ((j = is_mail_autolink(data + i, size - i)) != 0) {
+		*is_autolink = 2;
+		return i + j; }
 
 	/* looking for sometinhg looking like a tag end */
 	while (i < size && data[i] != '>') i += 1;
@@ -548,14 +608,21 @@ char_langle_esc(struct buf *ob, struct render *rndr,
 	return 1; }
 
 
-/* char_langle_tag • '<' when tags are allowed (assuming raw_html_tag != 0) */
+/* char_langle_tag • '<' when tags or autolinks are allowed */
 static size_t
 char_langle_tag(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
-	size_t end = tag_length(data, size);
+	int is_autolink = 0;
+	size_t end = tag_length(data, size, &is_autolink);
 	struct buf work = { data, end, 0, 0, 0 };
 	if (end) {
-		rndr->make.raw_html_tag(ob, &work, rndr->make.opaque);
+		if (rndr->make.autolink && is_autolink) {
+			struct buf *wk = bufnew(WORK_UNIT);
+			attr_escape(wk, data + 1, end - 2);
+			rndr->make.autolink(ob, wk, rndr->make.opaque);
+			bufrelease(wk); }
+		else if (rndr->make.raw_html_tag)
+			rndr->make.raw_html_tag(ob, &work, rndr->make.opaque);
 		return end; }
 	else {
 		BUFPUTSL(ob, "&lt;");
@@ -1186,7 +1253,7 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	if (rndr.make.linebreak) rndr.active_char['\n'] = char_linebreak;
 	if (rndr.make.image || rndr.make.link)
 		rndr.active_char['['] = char_link;
-	rndr.active_char['<'] = rndr.make.raw_html_tag
+	rndr.active_char['<'] = (rndr.make.raw_html_tag || rndr.make.autolink)
 				? char_langle_tag : char_langle_esc;
 	rndr.active_char['>'] = char_rangle;
 	rndr.active_char['&'] = char_entity;

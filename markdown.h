@@ -40,6 +40,7 @@ struct mkd_renderer {
 	void (*paragraph)(struct buf *ob, struct buf *text, void *opaque);
 
 	/* span level callbacks - NULL or return 0 prints the span verbatim */
+	int (*autolink)(struct buf *ob, struct buf *link, void *opaque);
 	int (*codespan)(struct buf *ob, struct buf *text, void *opaque);
 	int (*double_emphasis)(struct buf *ob, struct buf *text,
 						char c, void *opaque);
