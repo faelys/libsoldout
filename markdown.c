@@ -62,12 +62,16 @@ struct render {
  ********************/
 
 static int
-rndr_autolink(struct buf *ob, struct buf *link, void *opaque) {
+rndr_autolink(struct buf *ob, struct buf *link, enum mkd_autolink type,
+						void *opaque) {
 	if (!link || !link->size) return 0;
 	BUFPUTSL(ob, "<a href=\"");
+	if (type == MKDA_IMPLICIT_EMAIL) BUFPUTSL(ob, "mailto:");
 	bufput(ob, link->data, link->size);
 	BUFPUTSL(ob, "\">");
-	bufput(ob, link->data, link->size);
+	if (type == MKDA_EXPLICIT_EMAIL && link->size > 7)
+		bufput(ob, link->data + 7, link->size - 7);
+	else	bufput(ob, link->data, link->size);
 	BUFPUTSL(ob, "</a>");
 	return 1; }
 
@@ -283,7 +287,7 @@ is_mail_autolink(char *data, size_t size) {
 
 /* tag_length • returns the length of the given tag, or 0 is it's not valid */
 static size_t
-tag_length(char *data, size_t size, int *is_autolink) {
+tag_length(char *data, size_t size, enum mkd_autolink *autolink) {
 	size_t i, j;
 
 	/* a valid tag can't be shorter than 3 chars */
@@ -296,22 +300,22 @@ tag_length(char *data, size_t size, int *is_autolink) {
 	&&  (data[i] < 'A' || data[i] > 'Z')) return 0;
 
 	/* scheme test */
-	*is_autolink = 0;
+	*autolink = MKDA_NOT_AUTOLINK;
 	if (size > 6 && strncasecmp(data + 1, "http", 4) == 0 && (data[5] == ':'
 	|| ((data[5] == 's' || data[5] == 'S') && data[6] == ':'))) {
 		i = data[5] == ':' ? 6 : 7;
-		*is_autolink = 1; }
+		*autolink = MKDA_NORMAL; }
 	else if (size > 5 && strncasecmp(data + 1, "ftp:", 4) == 0) {
 		i = 5;
-		*is_autolink = 1; }
+		*autolink = MKDA_NORMAL; }
 	else if (size > 7 && strncasecmp(data + 1, "mailto:", 7) == 0) {
 		i = 8;
-		*is_autolink = 0; /* should go to the address test */ }
+		/* not changing *autolink to go to the address test */ }
 
 	/* completing autolink test: no whitespace or ' or " */
 	if (i >= size || i == '>')
-		*is_autolink = 0;
-	else if (*is_autolink) {
+		*autolink = MKDA_NOT_AUTOLINK;
+	else if (*autolink) {
 		j = i;
 		while (i < size && data[i] != '>' && data[i] != '\''
 		&& data[i] != '"' && data[i] != ' ' && data[i] != '\t'
@@ -320,9 +324,10 @@ tag_length(char *data, size_t size, int *is_autolink) {
 		if (i >= size) return 0;
 		if (i > j && data[i] == '>') return i + 1;
 		/* one of the forbidden chars has been found */
-		*is_autolink = 0; }
+		*autolink = MKDA_NOT_AUTOLINK; }
 	else if ((j = is_mail_autolink(data + i, size - i)) != 0) {
-		*is_autolink = 2;
+		*autolink = (i == 8)
+				? MKDA_EXPLICIT_EMAIL : MKDA_IMPLICIT_EMAIL;
 		return i + j; }
 
 	/* looking for sometinhg looking like a tag end */
@@ -612,14 +617,14 @@ char_langle_esc(struct buf *ob, struct render *rndr,
 static size_t
 char_langle_tag(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
-	int is_autolink = 0;
-	size_t end = tag_length(data, size, &is_autolink);
+	enum mkd_autolink altype = MKDA_NOT_AUTOLINK;
+	size_t end = tag_length(data, size, &altype);
 	struct buf work = { data, end, 0, 0, 0 };
 	if (end) {
-		if (rndr->make.autolink && is_autolink) {
+		if (rndr->make.autolink && altype != MKDA_NOT_AUTOLINK) {
 			struct buf *wk = bufnew(WORK_UNIT);
 			attr_escape(wk, data + 1, end - 2);
-			rndr->make.autolink(ob, wk, rndr->make.opaque);
+			rndr->make.autolink(ob, wk, altype, rndr->make.opaque);
 			bufrelease(wk); }
 		else if (rndr->make.raw_html_tag)
 			rndr->make.raw_html_tag(ob, &work, rndr->make.opaque);

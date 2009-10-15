@@ -26,6 +26,14 @@
  * TYPE DEFINITIONS *
  ********************/
 
+/* mkd_autolink • type of autolink */
+enum mkd_autolink {
+	MKDA_NOT_AUTOLINK,	/* used internally when it is not an autolink*/
+	MKDA_NORMAL,		/* normal http/http/ftp/etc link */
+	MKDA_EXPLICIT_EMAIL,	/* e-mail link with explit mailto: */
+	MKDA_IMPLICIT_EMAIL	/* e-mail link without mailto: */
+};
+
 /* mkd_renderer • functions for rendering parsed data */
 struct mkd_renderer {
 	/* block level callbacks - NULL skips the block */
@@ -40,7 +48,8 @@ struct mkd_renderer {
 	void (*paragraph)(struct buf *ob, struct buf *text, void *opaque);
 
 	/* span level callbacks - NULL or return 0 prints the span verbatim */
-	int (*autolink)(struct buf *ob, struct buf *link, void *opaque);
+	int (*autolink)(struct buf *ob, struct buf *link,
+					enum mkd_autolink type, void *opaque);
 	int (*codespan)(struct buf *ob, struct buf *text, void *opaque);
 	int (*double_emphasis)(struct buf *ob, struct buf *text,
 						char c, void *opaque);
