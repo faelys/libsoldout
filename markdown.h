@@ -39,14 +39,14 @@ struct mkd_renderer {
 						int flags, void *opaque);
 	void (*paragraph)(struct buf *ob, struct buf *text, void *opaque);
 
-	/* span level callbacks - NULL prints the span verbatim */
-	void (*codespan)(struct buf *ob, struct buf *text, void *opaque);
-	void (*image)(struct buf *ob, struct buf *link, struct buf *title,
+	/* span level callbacks - NULL or return 0 prints the span verbatim */
+	int (*codespan)(struct buf *ob, struct buf *text, void *opaque);
+	int (*image)(struct buf *ob, struct buf *link, struct buf *title,
 						struct buf *alt, void *opaque);
-	void (*linebreak)(struct buf *ob, void *opaque);
-	void (*link)(struct buf *ob, struct buf *link, struct buf *title,
+	int (*linebreak)(struct buf *ob, void *opaque);
+	int (*link)(struct buf *ob, struct buf *link, struct buf *title,
 					struct buf *content, void *opaque);
-	void (*raw_html_tag)(struct buf *ob, struct buf *tag, void *opaque);
+	int (*raw_html_tag)(struct buf *ob, struct buf *tag, void *opaque);
 
 	/* renderer data */
 	void *opaque; /* opaque data send to every rendering callback */

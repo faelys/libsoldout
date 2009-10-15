@@ -74,11 +74,12 @@ rndr_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</blockquote>\n"); }
 
-static void
+static int
 rndr_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "<code>");
 	if (text) bufput(ob, text->data, text->size);
-	BUFPUTSL(ob, "</code>"); }
+	BUFPUTSL(ob, "</code>");
+	return 1; }
 
 static void
 rndr_header(struct buf *ob, struct buf *text, int level, void *opaque) {
@@ -87,7 +88,7 @@ rndr_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 	if (text) bufput(ob, text->data, text->size);
 	bufprintf(ob, "</h%d>\n", level); }
 
-static void
+static int
 rndr_link(struct buf *ob, struct buf *link, struct buf *title,
 			struct buf *content, void *opaque) {
 	BUFPUTSL(ob, "<a");
@@ -101,7 +102,8 @@ rndr_link(struct buf *ob, struct buf *link, struct buf *title,
 		bufputc(ob, '"'); }
 	bufputc(ob, '>');
 	if (content && content->size) bufput(ob, content->data, content->size);
-	BUFPUTSL(ob, "</a>"); }
+	BUFPUTSL(ob, "</a>");
+	return 1; }
 
 static void
 rndr_list(struct buf *ob, struct buf *text, int flags, void *opaque) {
@@ -125,9 +127,10 @@ rndr_paragraph(struct buf *ob, struct buf *text, void *opaque) {
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "</p>\n"); }
 
-static void
-rndr_raw(struct buf *ob, struct buf *text, void *opaque) {
-	bufput(ob, text->data, text->size); }
+static int
+rndr_raw_inline(struct buf *ob, struct buf *text, void *opaque) {
+	bufput(ob, text->data, text->size);
+	return 1; }
 
 
 
@@ -140,10 +143,10 @@ xhtml_hrule(struct buf *ob, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<hr />\n"); }
 
-static void
+static int
 xhtml_image(struct buf *ob, struct buf *link, struct buf *title,
 			struct buf *alt, void *opaque) {
-	if (!link || !link->size) return;
+	if (!link || !link->size) return 0;
 	BUFPUTSL(ob, "<img src=\"");
 	bufput(ob, link->data, link->size);
 	BUFPUTSL(ob, "\" alt=\"");
@@ -152,11 +155,13 @@ xhtml_image(struct buf *ob, struct buf *link, struct buf *title,
 	if (title && title->size) {
 		BUFPUTSL(ob, "\" title=\"");
 		bufput(ob, title->data, title->size); }
-	BUFPUTSL(ob, "\" />"); }
+	BUFPUTSL(ob, "\" />");
+	return 1; }
 
-static void
+static int
 xhtml_linebreak(struct buf *ob, void *opaque) {
-	BUFPUTSL(ob, "<br />\n"); }
+	BUFPUTSL(ob, "<br />\n");
+	return 1; }
 
 
 /* exported renderer structure */
@@ -173,7 +178,7 @@ const struct mkd_renderer mkd_xhtml = {
 	xhtml_image,
 	xhtml_linebreak,
 	rndr_link,
-	rndr_raw,
+	rndr_raw_inline,
 
 	NULL };
 
