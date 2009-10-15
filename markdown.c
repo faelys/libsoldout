@@ -38,10 +38,21 @@ struct link_ref {
 	struct buf *	title; };
 
 
+/* char_trigger • function pointer to render active chars */
+/*   returns the number of chars taken care of */
+/*   data is the pointer of the beginning of the span */
+/*   offset is the number of valid chars before data */
+struct render;
+typedef size_t
+(*char_trigger)(struct buf *ob, struct render *rndr,
+		char *data, size_t offset, size_t size);
+
+
 /* render • structure containing one particular render */
 struct render {
 	struct mkd_renderer	make;
 	struct array		refs;
+	char_trigger		active_char[256];
 	int			flags; };
 
 
@@ -206,19 +217,152 @@ cmp_link_ref(void *array_entry, void *key) {
  * INLINE PARSING FUNCTIONS *
  ****************************/
 
-/* predeclaration */
-static void
-parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size);
-
-
-/* parse_link • parsing a link or an image */
+/* tag_length • returns the length of the given tag, or 0 is it's not valid */
 static size_t
-parse_link(struct buf *ob, struct render *rndr, char *data, size_t size,
-				int is_img) {
+tag_length(char *data, size_t size) {
+	size_t i;
+
+	/* a valid tag can't be shorter than 3 chars */
+	if (size < 3) return 0;
+
+	/* begins with a '<' optionally followed by '/', followed by letter */
+	if (data[0] != '<') return 0;
+	i = (data[1] == '/') ? 2 : 1;
+	if ((data[i] < 'a' || data[i] > 'z')
+	&&  (data[i] < 'A' || data[i] > 'Z')) return 0;
+
+	/* looking for sometinhg looking like a tag end */
+	while (i < size && data[i] != '>') i += 1;
+	if (i >= size) return 0;
+	return i + 1; }
+
+
+/* parse_inline • parses inline markdown elements */
+static void
+parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
+	size_t i = 0, end;
+	char_trigger action;
+
+	while (i < size) {
+		/* copying inactive chars into the output */
+		end = i;
+		while (end < size
+		&& (action = rndr->active_char[(unsigned char)data[end]]) == 0)
+			end += 1;
+		bufput(ob, data + i, end - i);
+		if (end >= size) break;
+		i = end;
+
+		/* calling the trigger */
+		end = action(ob, rndr, data + i, i, size - i);
+		if (!end) { /* no action from the callback */
+			bufputc(ob, data[i]);
+			i += 1; }
+		else i += end; } }
+
+
+/* char_linebreak • '\n' preceded by two spaces (assuming linebreak != 0) */
+static size_t
+char_linebreak(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	if (offset < 2 || data[-1] != ' ' || data[-2] != 2) return 0;
+	/* removing the last space from ob and rendering */
+	if (ob->size && ob->data[ob->size - 1] == ' ') ob->size -= 1;
+	rndr->make.linebreak(ob);
+	return 1; }
+
+
+/* char_codespan • '`' parsing a code span (assuming codespan != 0) */
+static size_t
+char_codespan(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	size_t end = 1;
+	struct buf *work;
+
+	while (end < size && data[end] != '`') end += 1;
+	if (end >= size) return 0; /* no matching backtick */
+	if (end == 2) { /* empty code span */
+		BUFPUTSL(ob, "``");
+		return 2; }
+	/* real code span */
+	work = bufnew(WORK_UNIT);
+	html_escape(work, data + 1, end - 1);
+	rndr->make.codespan(ob, work);
+	bufrelease(work);
+	return end + 1; }
+
+
+/* char_escape • '\\' backslash escape */
+static size_t
+char_escape(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	if (size > 1) html_escape(ob, data + 1, 1);
+	return 2; }
+
+
+/* char_entity • '&' escaped when it doesn't belong to an entity */
+/* valid entities are assumed to be anything mathing &#?[A-Za-z0-9]+; */
+static size_t
+char_entity(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	size_t end = 1;
+	if (end < size && data[end] == '#') end += 1;
+	while (end < size
+	&& ((data[end] >= '0' && data[end] <= '9')
+	||  (data[end] >= 'a' && data[end] <= 'z')
+	||  (data[end] >= 'A' && data[end] <= 'Z')))
+		end += 1;
+	/* an '&' will always be put */
+	bufputc(ob, '&');
+	/* adding the "amp;" part if needed */
+	if (end >= size || data[end] != ';')
+		BUFPUTSL(ob, "amp;");
+	return 1; }
+
+
+/* char_langle_esc • '<' always escaped (no tag processing) */
+static size_t
+char_langle_esc(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	BUFPUTSL(ob, "&lt;");
+	return 1; }
+
+
+/* char_langle_tag • '<' when tags are allowed (assuming raw_html_tag != 0) */
+static size_t
+char_langle_tag(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	size_t end = tag_length(data, size);
+	struct buf work = { data, end, 0, 0, 0 };
+	if (end) {
+		rndr->make.raw_html_tag(ob, &work);
+		return end; }
+	else {
+		BUFPUTSL(ob, "&lt;");
+		return 1; } }
+
+
+/* char_rangle • '>': always escaped when encountered outside of a tag */
+static size_t
+char_rangle(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	BUFPUTSL(ob, "&gt;");
+	return 1; }
+
+
+/* char_link • '[': parsing a link or an image */
+static size_t
+char_link(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	int is_img = (offset && data[-1] == '!');
 	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0;
 	struct buf *content = 0;
 	struct buf *link = 0;
 	struct buf *title = 0;
+
+	/* checking whether the correct renderer exists */
+	if ((is_img && !rndr->make.image) || (!is_img && !rndr->make.link))
+		return 0;
 
 	/* looking for the end of the first part: [^\]\] */
 	while (i < size && (data[i] != ']' || data[i - 1] == '\\')) i += 1;
@@ -316,7 +460,9 @@ parse_link(struct buf *ob, struct render *rndr, char *data, size_t size,
 		else parse_inline(content, rndr, data + 1, txt_e - 1); }
 
 	/* calling the relevant rendering function */
-	if (is_img) rndr->make.image(ob, link, title, content);
+	if (is_img) {
+		if (ob->size && ob->data[ob->size - 1] == '!') ob->size -= 1;
+		rndr->make.image(ob, link, title, content); }
 	else rndr->make.link(ob, link, title, content);
 
 	/* cleanup */
@@ -324,148 +470,6 @@ parse_link(struct buf *ob, struct render *rndr, char *data, size_t size,
 	bufrelease(title);
 	bufrelease(content);
 	return i; }
-
-
-/* tag_length • returns the length of the given tag, or 0 is it's not valid */
-static size_t
-tag_length(char *data, size_t size) {
-	size_t i;
-
-	/* a valid tag can't be shorter than 3 chars */
-	if (size < 3) return 0;
-
-	/* begins with a '<' optionally followed by '/', followed by letter */
-	if (data[0] != '<') return 0;
-	i = (data[1] == '/') ? 2 : 1;
-	if ((data[i] < 'a' || data[i] > 'z')
-	&&  (data[i] < 'A' || data[i] > 'Z')) return 0;
-
-	/* looking for sometinhg looking like a tag end */
-	while (i < size && data[i] != '>') i += 1;
-	if (i >= size) return 0;
-	return i + 1; }
-
-
-/* inline_active • char map of active inline characters */
-static const char inline_active[256] = {
-/*      0  1  2  3  4  5  6  7    8  9  A  B  C  D  E  F */
-/* 0 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 1, 0, 0, 0, 0, 0, /* '\n' */
-/* 1 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* 2 */	0, 0, 0, 0, 0, 0, 1, 0,   0, 0, 1, 0, 0, 0, 0, 0, /* '&', '*' */
-/* 3 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 1, 0, 1, 0, /* '<', '>' */
-/* 4 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* 5 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 1, 1, 0, 0, 1, /* '[', '\\', '_' */
-/* 6 */	1, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, /* '`' */
-/* 7 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* 8 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* 9 */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* A */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* B */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* C */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* D */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* E */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,
-/* F */	0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0 };
-
-
-/* parse_inline • parses inline markdown elements */
-static void
-parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
-	size_t i = 0, end;
-	struct buf *work = 0;
-
-	while (i < size) {
-		/* copying inactive chars into the output */
-		end = i;
-		while (end < size && !inline_active[(unsigned char)data[end]])
-			end += 1;
-		bufput(ob, data + i, end - i);
-		if (end >= size) break;
-		i = end;
-
-		/* line break */
-		if (data[i] == '\n') {
-			if (i >= 2
-			&& data[i - 1] == ' ' && data[i - 2] == ' ') {
-				ob->size -= 1;
-				rndr->make.linebreak(ob); }
-			else bufputc(ob, '\n');
-			i += 1; }
-
-		/* code span */
-		else if (data[i] == '`') {
-			end = i + 1;
-			while (end < size && data[end] != '`') end += 1;
-			if (end >= size) { /* no matching backtick */
-				bufputc(ob, '`');
-				i += 1; }
-			else if (end == i + 1) { /* empty code span */
-				BUFPUTSL(ob, "``");
-				i += 2; }
-			else { /* real code span */
-				if (!work) work = bufnew(WORK_UNIT);
-				work->size = 0;
-				html_escape(work, data + i + 1, end - i - 1);
-				rndr->make.codespan(ob, work);
-				i = end + 1; } }
-
-		/* escape: verbatim copy of the following char */
-		else if (data[i] == '\\') {
-			if (i + 1 < size) html_escape(ob, data + i + 1, 1);
-			i += 2; }
-
-		/* entity check: are considered valid entities anything
-		 *		matching &#?[A-Za-z0-9]+;    */
-		else if (data[i] == '&') {
-			end = i + 1;
-			if (end < size && data[end] == '#') end += 1;
-			while (end < size
-			&& ((data[end] >= '0' && data[end] <= '9')
-			||  (data[end] >= 'a' && data[end] <= 'z')
-			||  (data[end] >= 'A' && data[end] <= 'Z')))
-				end += 1;
-			/* an '&' will always be put */
-			bufputc(ob, '&');
-			i += 1;
-			/* adding the "amp;" part if needed */
-			if (end >= size || data[end] != ';')
-				BUFPUTSL(ob, "amp;"); }
-
-		/* litteral tag: if allowed, disable parsing, otherwise esc */
-		else if (data[i] == '<') {
-			if (!rndr->make.raw_html_tag
-			|| (end = tag_length(data + i, size - i)) == 0) {
-				BUFPUTSL(ob, "&lt;");
-				i += 1; }
-			else {
-				struct buf work = { data + i, end, 0, 0, 0 };
-				rndr->make.raw_html_tag(ob, &work);
-				i += end; } }
-
-		/* '>' encountered outside of a tag is always escaped */
-		else if (data[i] == '>') {
-			BUFPUTSL(ob, "&gt;");
-			i += 1; }
-
-		/* '[' is for a link or an image */
-		else if (data[i] == '[') {
-			int img = (i && data[i - 1] == '!');
-			if (img) ob->size -= 1;
-			end = parse_link(ob, rndr, data + i, size - i, img);
-			if (!end) { /* invalid link */
-				if (img) ob->size += 1;
-				bufputc(ob, '[');
-				i += 1; }
-			else i += end; }
-
-		/* should never happen */
-		else {
-			printf("Unhandled active char '%c' (%d)\n",
-				data[i], (int)data[i]);
-			bufputc(ob, data[i]);
-			i += 1; } }
-
-	/* cleanup */
-	bufrelease(work); }
 
 
 
@@ -948,9 +952,20 @@ markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndrer, int flg){
 	struct render rndr;
 
 	/* filling the render structure */
+	if (!rndrer) return;
 	rndr.make = *rndrer;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
 	rndr.flags = flg;
+	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;
+	if (rndr.make.codespan) rndr.active_char['`'] = char_codespan;
+	if (rndr.make.linebreak) rndr.active_char['\n'] = char_linebreak;
+	if (rndr.make.image || rndr.make.link)
+		rndr.active_char['['] = char_link;
+	rndr.active_char['<'] = rndr.make.raw_html_tag
+				? char_langle_tag : char_langle_esc;
+	rndr.active_char['>'] = char_rangle;
+	rndr.active_char['&'] = char_entity;
+	rndr.active_char['\\'] = char_escape;
 
 	/* first pass: looking for references, copying everything else */
 	beg = 0;
