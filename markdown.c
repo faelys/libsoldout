@@ -148,6 +148,14 @@ rndr_raw_inline(struct buf *ob, struct buf *text, void *opaque) {
 	bufput(ob, text->data, text->size);
 	return 1; }
 
+static int
+rndr_triple_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
+	if (!text || !text->size) return 0;
+	BUFPUTSL(ob, "<strong><em>");
+	bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</em></strong>");
+	return 1; }
+
 
 
 /**********************
@@ -197,6 +205,7 @@ const struct mkd_renderer mkd_xhtml = {
 	xhtml_linebreak,
 	rndr_link,
 	rndr_raw_inline,
+	rndr_triple_emphasis,
 
 	"*_",
 	NULL };
@@ -411,7 +420,16 @@ parse_emph3(struct buf *ob, struct render *rndr,
 		|| data[i - 1] == '\t' || data[i - 1] == '\n')
 			continue;
 
-		if (i + 1 < size && data[i + 1] == c) {
+		if (i + 2 < size && data[i + 1] == c && data[i + 2] == c
+		&& rndr->make.triple_emphasis) {
+			/* triple symbol found */
+			struct buf *work = bufnew(WORK_UNIT);
+			parse_inline(work, rndr, data, i);
+			rndr->make.triple_emphasis(ob, work, c,
+							rndr->make.opaque);
+			bufrelease(work);
+			return i + 3; }
+		else if (i + 1 < size && data[i + 1] == c) {
 			/* double symbol found, handing over to emph1 */
 			len = parse_emph1(ob, rndr, data - 2, size + 2, c);
 			if (!len) return 0;
@@ -1158,7 +1176,8 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	rndr.make = *rndrer;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
 	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;
-	if ((rndr.make.emphasis || rndr.make.double_emphasis)
+	if ((rndr.make.emphasis || rndr.make.double_emphasis
+						|| rndr.make.triple_emphasis)
 	&& rndr.make.emph_chars)
 		for (i = 0; rndr.make.emph_chars[i]; i += 1)
 			rndr.active_char[(unsigned char)rndr.make.emph_chars[i]]

@@ -50,6 +50,8 @@ struct mkd_renderer {
 	int (*link)(struct buf *ob, struct buf *link, struct buf *title,
 					struct buf *content, void *opaque);
 	int (*raw_html_tag)(struct buf *ob, struct buf *tag, void *opaque);
+	int (*triple_emphasis)(struct buf *ob, struct buf *text,
+						char c, void *opaque);
 
 	/* renderer data */
 	const char *emph_chars; /* chars that trigger emphasis rendering */
