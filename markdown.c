@@ -52,8 +52,7 @@ typedef size_t
 struct render {
 	struct mkd_renderer	make;
 	struct array		refs;
-	char_trigger		active_char[256];
-	int			flags; };
+	char_trigger		active_char[256]; };
 
 
 
@@ -161,7 +160,7 @@ xhtml_linebreak(struct buf *ob, void *opaque) {
 
 
 /* exported renderer structure */
-struct mkd_renderer mkd_xhtml = {
+const struct mkd_renderer mkd_xhtml = {
 	rndr_blockcode,
 	rndr_blockquote,
 	rndr_header,
@@ -947,7 +946,7 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 
 /* markdown • parses the input buffer and renders it into the output buffer */
 void
-markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndrer, int flg){
+markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	struct link_ref *lr;
 	struct buf *text = bufnew(TEXT_UNIT);
 	size_t i, beg, end;
@@ -957,7 +956,6 @@ markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndrer, int flg){
 	if (!rndrer) return;
 	rndr.make = *rndrer;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
-	rndr.flags = flg;
 	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;
 	if (rndr.make.codespan) rndr.active_char['`'] = char_codespan;
 	if (rndr.make.linebreak) rndr.active_char['\n'] = char_linebreak;

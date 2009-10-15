@@ -46,7 +46,7 @@ main(void) {
 
 	/* performing markdown parsing */
 	ob = bufnew(OUTPUT_UNIT);
-	markdown(ob, ib, &mkd_xhtml, 0);
+	markdown(ob, ib, &mkd_xhtml);
 
 	/* writing the result to stdout */
 	fwrite(ob->data, 1, ob->size, stdout);

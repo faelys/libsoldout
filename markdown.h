@@ -58,16 +58,13 @@ struct mkd_renderer {
  * PREDEFINED RENDERERS *
  ************************/
 
-extern struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
+extern const struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
 
 
 
 /*********
  * FLAGS *
  *********/
-
-/* parser flags */
-#define MKD_DISABLE_RAW_HTML	1  /* if set, '<' and '>' will always be esc */
 
 /* list/listitem flags */
 #define MKD_LIST_ORDERED	1
@@ -81,7 +78,7 @@ extern struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
 
 /* markdown • parses the input buffer and renders it into the output buffer */
 void
-markdown(struct buf *ob, struct buf *ib, struct mkd_renderer *rndr, int flags);
+markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndr);
 
 
 #endif /* ndef LITHIUM_MARKDOWN_H */
