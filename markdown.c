@@ -690,13 +690,17 @@ char_link(struct buf *ob, struct render *rndr,
 			while (i < size && data[i] != ')')
 				i += 1;
 			if (i >= size) return 0;
-			/* closing quote show precede exactly the parenthesis*/
-			if (data[i - 1] != '\'' && data[i - 1] != '"') {
-				title_b = 0;
-				link_e = i; }
-			else
-				title_e = i - 1;
-			i += 1; }
+
+			/* skipping whitespaces after title */
+			title_e = i - 1;
+			while (title_e > title_b && (data[title_e] == ' ' 
+			|| data[title_e] == '\t' || data[title_e] == '\n'))
+				title_e -= 1;
+
+			/* checking for closing quote presence */
+			if (data[title_e] != '\'' &&  data[title_e] != '"') {
+				title_b = title_e = 0;
+				link_e = i; } }
 
 		/* remove whitespace at the end of the link */
 		while (link_e > link_b
