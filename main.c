@@ -19,6 +19,8 @@
 #include "markdown.h"
 
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 
 #define READ_UNIT 1024
 #define OUTPUT_UNIT 64
@@ -32,17 +34,27 @@ extern size_t buffer_stat_alloc_bytes;
 
 /* main • main function, interfacing STDIO with the parser */
 int
-main(void) {
+main(int argc, char **argv) {
 	struct buf *ib, *ob;
 	size_t ret;
+	FILE *in = stdin;
 
-	/* reading everything from stdin */
+	/* opening the file if given from the command line */
+	if (argc > 1) {
+		in = fopen(argv[1], "r");
+		if (!in) {
+			fprintf(stderr,"Unable to open input file \"%s\": %s\n",
+				argv[1], strerror(errno));
+			return 1; } }
+
+	/* reading everything */
 	ib = bufnew(READ_UNIT);
 	bufgrow(ib, READ_UNIT);
 	while ((ret = fread(ib->data + ib->size, 1,
-			ib->asize - ib->size, stdin)) > 0) {
+			ib->asize - ib->size, in)) > 0) {
 		ib->size += ret;
 		bufgrow(ib, ib->size + READ_UNIT); }
+	if (in != stdin) fclose(in);
 
 	/* performing markdown parsing */
 	ob = bufnew(OUTPUT_UNIT);
