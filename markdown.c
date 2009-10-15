@@ -122,16 +122,12 @@ rndr_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 static int
 rndr_link(struct buf *ob, struct buf *link, struct buf *title,
 			struct buf *content, void *opaque) {
-	BUFPUTSL(ob, "<a");
-	if (link && link->size) {
-		BUFPUTSL(ob, " href=\"");
-		bufput(ob, link->data, link->size);
-		bufputc(ob, '"'); }
+	BUFPUTSL(ob, "<a href=\"");
+	if (link && link->size) bufput(ob, link->data, link->size);
 	if (title && title->size) {
-		BUFPUTSL(ob, " title=\"");
-		bufput(ob, title->data, title->size);
-		bufputc(ob, '"'); }
-	bufputc(ob, '>');
+		BUFPUTSL(ob, "\" title=\"");
+		bufput(ob, title->data, title->size); }
+	BUFPUTSL(ob, "\">");
 	if (content && content->size) bufput(ob, content->data, content->size);
 	BUFPUTSL(ob, "</a>");
 	return 1; }
