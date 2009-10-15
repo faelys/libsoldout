@@ -687,26 +687,25 @@ char_link(struct buf *ob, struct render *rndr,
 		if (data[i] == '\'' || data[i] == '"') {
 			i += 1;
 			title_b = i;
-			while (i < size
-			&& data[i] != '\'' && data[i] != '"' && data[i] != ')')
+			while (i < size && data[i] != ')')
 				i += 1;
 			if (i >= size) return 0;
-			if (data[i] == ')') {
+			/* closing quote show precede exactly the parenthesis*/
+			if (data[i - 1] != '\'' && data[i - 1] != '"') {
 				title_b = 0;
 				link_e = i; }
-			else { /* allow only whitespace after the title */
-				title_e = i;
-				i += 1;
-				while (i < size
-				&& (data[i] == ' ' || data[i] == '\t'))
-					i += 1;
-				if (i >= size || data[i] != ')')
-					return 0; } }
+			else
+				title_e = i - 1;
+			i += 1; }
 
 		/* remove whitespace at the end of the link */
 		while (link_e > link_b
 		&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
 			link_e -= 1;
+
+		/* remove optional angle brackets around the link */
+		if (data[link_b] == '<') link_b += 1;
+		if (data[link_e - 1] == '>') link_e -= 1;
 
 		/* building escaped link and title */
 		if (link_e > link_b) {
