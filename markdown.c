@@ -81,6 +81,22 @@ rndr_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "</code>");
 	return 1; }
 
+static int
+rndr_double_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
+	if (!text || !text->size) return 0;
+	BUFPUTSL(ob, "<strong>");
+	bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</strong>");
+	return 1; }
+
+static int
+rndr_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
+	if (!text || !text->size) return 0;
+	BUFPUTSL(ob, "<em>");
+	if (text) bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</em>");
+	return 1; }
+
 static void
 rndr_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
@@ -175,11 +191,14 @@ const struct mkd_renderer mkd_xhtml = {
 	rndr_paragraph,
 
 	rndr_codespan,
+	rndr_double_emphasis,
+	rndr_emphasis,
 	xhtml_image,
 	xhtml_linebreak,
 	rndr_link,
 	rndr_raw_inline,
 
+	"*_",
 	NULL };
 
 
@@ -265,6 +284,169 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 			bufputc(ob, data[i]);
 			i += 1; }
 		else i += end; } }
+
+
+/* find_emph_char • looks for the next emph char, skipping other constructs */
+static size_t
+find_emph_char(char *data, size_t size, char c) {
+	size_t i = 1;
+
+	while (i < size) {
+		while (i < size && data[i] != c
+		&& data[i] != '`' && data[i] != '[')
+			i += 1;
+		if (data[i] == c) return i;
+
+		/* not counting escaped chars */
+		if (i && data[i - 1] == '\\') { i += 1; continue; }
+
+		/* skipping a code span */
+		if (data[i] == '`') {
+			size_t tmp_i = 0;
+			i += 1;
+			while (i < size && data[i] != '`') {
+				if (!tmp_i && data[i] == c) tmp_i = i;
+				i += 1; }
+			if (i >= size) return tmp_i;
+			i += 1; }
+
+		/* skipping a link */
+		else if (data[i] == '[') {
+			size_t tmp_i = 0;
+			char cc;
+			i += 1;
+			while (i < size && data[i] != ']') {
+				if (!tmp_i && data[i] == c) tmp_i = i;
+				i += 1; }
+			i += 1;
+			while (i < size && (data[i] == ' '
+			|| data[i] == '\t' || data[i] == '\n'))
+				i += 1;
+			if (i >= size) return tmp_i;
+			if (data[i] != '[' && data[i] != '(') { /* not a link*/
+				if (tmp_i) return tmp_i;
+				else continue; }
+			cc = data[i];
+			i += 1;
+			while (i < size && data[i] != cc) {
+				if (!tmp_i && data[i] == c) tmp_i = i;
+				i += 1; }
+			if (i >= size) return tmp_i;
+			i += 1; } }
+	return 0; }
+
+
+/* parse_emph1 • parsing single emphase */
+/* closed by a symbol not preceded by whitespace and not followed by symbol */
+static size_t
+parse_emph1(struct buf *ob, struct render *rndr,
+			char *data, size_t size, char c) {
+	size_t i = 0, len;
+	struct buf *work;
+
+	if (!rndr->make.emphasis) return 0;
+
+	/* skipping one symbol if coming from emph3 */
+	if (size > 1 && data[0] == c && data[1] == c) i = 1;
+
+	while (i < size) {
+		len = find_emph_char(data + i, size - i, c);
+		if (!len) return 0;
+		i += len;
+		if (i >= size) return 0;
+
+		if (i + 1 < size && data[i + 1] == c) {
+			i += 1;
+			continue; }
+		if (data[i] == c && data[i - 1] != ' '
+		&& data[i - 1] != '\t' && data[i - 1] != '\n') {
+			work = bufnew(WORK_UNIT);
+			parse_inline(work, rndr, data, i);
+			rndr->make.emphasis(ob, work, c, rndr->make.opaque);
+			bufrelease(work);
+			return i + 1; } }
+	return 0; }
+
+
+/* parse_emph2 • parsing single emphase */
+static size_t
+parse_emph2(struct buf *ob, struct render *rndr,
+			char *data, size_t size, char c) {
+	size_t i = 0, len;
+	struct buf *work;
+
+	if (!rndr->make.double_emphasis) return 0;
+	
+	while (i < size) {
+		len = find_emph_char(data + i, size - i, c);
+		if (!len) return 0;
+		i += len;
+		if (i + 1 < size && data[i] == c && data[i + 1] == c
+		&& i && data[i - 1] != ' '
+		&& data[i - 1] != '\t' && data[i - 1] != '\n') {
+			work = bufnew(WORK_UNIT);
+			parse_inline(work, rndr, data, i);
+			rndr->make.double_emphasis(ob, work, c,
+				rndr->make.opaque);
+			bufrelease(work);
+			return i + 2; }
+		i += 1; }
+	return 0; }
+
+
+/* parse_emph3 • parsing single emphase */
+/* finds the first closing tag, and delegates to the other emph */
+static size_t
+parse_emph3(struct buf *ob, struct render *rndr,
+			char *data, size_t size, char c) {
+	size_t i = 0, len;
+
+	while (i < size) {
+		len = find_emph_char(data + i, size - i, c);
+		if (!len) return 0;
+		i += len;
+
+		/* skip whitespace preceded symbols */
+		if (data[i] != c || data[i - 1] == ' '
+		|| data[i - 1] == '\t' || data[i - 1] == '\n')
+			continue;
+
+		if (i + 1 < size && data[i + 1] == c) {
+			/* double symbol found, handing over to emph1 */
+			len = parse_emph1(ob, rndr, data - 2, size + 2, c);
+			if (!len) return 0;
+			else return len - 2; }
+		else {
+			/* single symbol found, handing over to emph2 */
+			len = parse_emph2(ob, rndr, data - 1, size + 1, c);
+			if (!len) return 0;
+			else return len - 1; } }
+	return 0; }
+
+
+/* char_emphasis • single and double emphasis parsing */
+static size_t
+char_emphasis(struct buf *ob, struct render *rndr,
+				char *data, size_t offset, size_t size) {
+	char c = data[0];
+	size_t ret;
+	if (size > 2 && data[1] != c) {
+		/* whitespace cannot follow an opening emphasis */
+		if (data[1] == ' ' || data[1] == '\t' || data[1] == '\n'
+		|| (ret = parse_emph1(ob, rndr, data + 1, size - 1, c)) == 0)
+			return 0;
+		return ret + 1; }
+	if (size > 3 && data[1] == c && data[2] != c) {
+		if (data[2] == ' ' || data[2] == '\t' || data[2] == '\n'
+		|| (ret = parse_emph2(ob, rndr, data + 2, size - 2, c)) == 0)
+			return 0;
+		return ret + 2; }
+	if (size > 4 && data[1] == c && data[2] == c && data[3] != c) {
+		if (data[3] == ' ' || data[3] == '\t' || data[3] == '\n'
+		|| (ret = parse_emph3(ob, rndr, data + 3, size - 3, c)) == 0)
+			return 0;
+		return ret + 3; }
+	return 0; }
 
 
 /* char_linebreak • '\n' preceded by two spaces (assuming linebreak != 0) */
@@ -962,6 +1144,11 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	rndr.make = *rndrer;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
 	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;
+	if ((rndr.make.emphasis || rndr.make.double_emphasis)
+	&& rndr.make.emph_chars)
+		for (i = 0; rndr.make.emph_chars[i]; i += 1)
+			rndr.active_char[(unsigned char)rndr.make.emph_chars[i]]
+				= char_emphasis;
 	if (rndr.make.codespan) rndr.active_char['`'] = char_codespan;
 	if (rndr.make.linebreak) rndr.active_char['\n'] = char_linebreak;
 	if (rndr.make.image || rndr.make.link)

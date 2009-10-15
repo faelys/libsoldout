@@ -41,6 +41,9 @@ struct mkd_renderer {
 
 	/* span level callbacks - NULL or return 0 prints the span verbatim */
 	int (*codespan)(struct buf *ob, struct buf *text, void *opaque);
+	int (*double_emphasis)(struct buf *ob, struct buf *text,
+						char c, void *opaque);
+	int (*emphasis)(struct buf *ob, struct buf *text, char c,void*opaque);
 	int (*image)(struct buf *ob, struct buf *link, struct buf *title,
 						struct buf *alt, void *opaque);
 	int (*linebreak)(struct buf *ob, void *opaque);
@@ -49,6 +52,7 @@ struct mkd_renderer {
 	int (*raw_html_tag)(struct buf *ob, struct buf *tag, void *opaque);
 
 	/* renderer data */
+	const char *emph_chars; /* chars that trigger emphasis rendering */
 	void *opaque; /* opaque data send to every rendering callback */
 };
 
