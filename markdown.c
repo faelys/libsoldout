@@ -153,15 +153,16 @@ xhtml_linebreak(struct buf *ob) {
 struct mkd_renderer mkd_xhtml = {
 	rndr_blockcode,
 	rndr_blockquote,
-	rndr_codespan,
 	rndr_header,
 	xhtml_hrule,
-	xhtml_image,
-	xhtml_linebreak,
-	rndr_link,
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+
+	rndr_codespan,
+	xhtml_image,
+	xhtml_linebreak,
+	rndr_link,
 	rndr_raw };
 
 

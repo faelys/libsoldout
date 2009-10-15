@@ -28,19 +28,22 @@
 
 /* mkd_renderer • functions for rendering parsed data */
 struct mkd_renderer {
+	/* block level callbacks - NULL skips the block */
 	void (*blockcode)(struct buf *ob, struct buf *text);
 	void (*blockquote)(struct buf *ob, struct buf *text);
-	void (*codespan)(struct buf *ob, struct buf *text);
 	void (*header)(struct buf *ob, struct buf *text, int level);
 	void (*hrule)(struct buf *ob);
+	void (*list)(struct buf *ob, struct buf *text, int flags);
+	void (*listitem)(struct buf *ob, struct buf *text, int flags);
+	void (*paragraph)(struct buf *ob, struct buf *text);
+
+	/* span level callbacks - NULL prints the span verbatim */
+	void (*codespan)(struct buf *ob, struct buf *text);
 	void (*image)(struct buf *ob, struct buf *link, struct buf *title,
 						struct buf *alt);
 	void (*linebreak)(struct buf *ob);
 	void (*link)(struct buf *ob, struct buf *link, struct buf *title,
 						struct buf *content);
-	void (*list)(struct buf *ob, struct buf *text, int flags);
-	void (*listitem)(struct buf *ob, struct buf *text, int flags);
-	void (*paragraph)(struct buf *ob, struct buf *text);
 	void (*raw_html_tag)(struct buf *ob, struct buf *tag); };
 
 
