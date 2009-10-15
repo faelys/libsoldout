@@ -744,9 +744,23 @@ char_link(struct buf *ob, struct render *rndr,
 		bufset(&title, lr->title);
 		i += 1; }
 
+	/* shortcut reference style link */
+	else {
+		struct buf id = { 0, 0, 0, 0, 0 };
+		struct link_ref *lr;
 
-	/* invalid link */
-	else return 0;
+		/* finding the link_ref */
+		id.data = data + 1;
+		id.size = txt_e - 1;
+		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
+		if (!lr) return 0;
+
+		/* keeping link and title from link_ref */
+		bufset(&link, lr->link);
+		bufset(&title, lr->title);
+
+		/* rewinding the whitespace */
+		i = txt_e + 1; }
 
 	/* building content: img alt is escaped, link content is parsed */
 	if (txt_e > 1) {
