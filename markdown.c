@@ -726,8 +726,12 @@ char_link(struct buf *ob, struct render *rndr,
 		link_e = i;
 
 		/* finding the link_ref */
-		id.data = data + link_b;
-		id.size = link_e - link_b;
+		if (link_b == link_e) {
+			id.data = data + 1;
+			id.size = txt_e - 1; }
+		else {
+			id.data = data + link_b;
+			id.size = link_e - link_b; }
 		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
 		if (!lr) return 0;
 
