@@ -1236,7 +1236,7 @@ parse_block(struct buf *ob, struct render *rndr,
 static int
 is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	int n;
-	size_t i = beg;
+	size_t i = 0;
 	size_t id_offset, id_end;
 	size_t link_offset, link_end;
 	size_t title_offset, title_end;
@@ -1245,8 +1245,12 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	struct buf id = { 0, 0, 0, 0, 0 }; /* volatile buf for id search */
 
 	/* up to 3 optional leading spaces */
-	while (i < beg + 3 && i < end && data[i] == ' ') i += 1;
-	if (i >= end || i >= beg + 3) return 0;
+	if (beg + 3 >= end) return 0;
+	if (data[beg] == ' ') { i = 1;
+	if (data[beg + 1] == ' ') { i = 2;
+	if (data[beg + 2] == ' ') { i = 3;
+	if (data[beg + 3] == ' ') return 0; } } }
+	i += beg;
 
 	/* id part: anything but a newline between brackets */
 	if (data[i] != '[') return 0;
