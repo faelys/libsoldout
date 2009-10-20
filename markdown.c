@@ -671,7 +671,7 @@ char_rangle(struct buf *ob, struct render *rndr,
 static size_t
 char_link(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
-	int is_img = (offset && data[-1] == '!');
+	int is_img = (offset && data[-1] == '!'), level;
 	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0;
 	struct buf *content = 0;
 	struct buf *link = 0;
@@ -682,8 +682,13 @@ char_link(struct buf *ob, struct render *rndr,
 	if ((is_img && !rndr->make.image) || (!is_img && !rndr->make.link))
 		return 0;
 
-	/* looking for the end of the first part: [^\]\] */
-	while (i < size && (data[i] != ']' || data[i - 1] == '\\')) i += 1;
+	/* looking for the matching closing bracket */
+	for (level = 1; i < size; i += 1)
+		if (data[i - 1] == '\\') continue;
+		else if (data[i] == '[') level += 1;
+		else if (data[i] == ']') {
+			level -= 1;
+			if (level <= 0) break; }
 	if (i >= size) return 0;
 	txt_e = i;
 	i += 1;
