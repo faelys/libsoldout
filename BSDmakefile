@@ -30,6 +30,9 @@ all:		markdown
 markdown:	main.o markdown.o array.o buffer.o
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
+benchmark:	benchmark.o markdown.o array.o buffer.o
+	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
+
 clean:
 	rm -f *.o
 	rm -f markdown

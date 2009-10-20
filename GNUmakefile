@@ -29,6 +29,9 @@ all:		markdown
 markdown:	main.o markdown.o array.o buffer.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
+benchmark:	benchmark.o markdown.o array.o buffer.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
 clean:
 	rm -f *.o
 	rm -f markdown
