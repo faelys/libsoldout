@@ -53,7 +53,8 @@ typedef size_t
 struct render {
 	struct mkd_renderer	make;
 	struct array		refs;
-	char_trigger		active_char[256]; };
+	char_trigger		active_char[256];
+	struct parray		work; };
 
 
 
@@ -412,7 +413,7 @@ static size_t
 parse_emph1(struct buf *ob, struct render *rndr,
 			char *data, size_t size, char c) {
 	size_t i = 0, len;
-	struct buf *work;
+	struct buf *work = 0;
 
 	if (!rndr->make.emphasis) return 0;
 
@@ -430,10 +431,15 @@ parse_emph1(struct buf *ob, struct render *rndr,
 			continue; }
 		if (data[i] == c && data[i - 1] != ' '
 		&& data[i - 1] != '\t' && data[i - 1] != '\n') {
-			work = bufnew(WORK_UNIT);
+			if (rndr->work.size < rndr->work.asize) {
+				work = rndr->work.item[rndr->work.size ++];
+				work->size = 0; }
+			else {
+				work = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, work); }
 			parse_inline(work, rndr, data, i);
 			rndr->make.emphasis(ob, work, c, rndr->make.opaque);
-			bufrelease(work);
+			rndr->work.size -= 1;
 			return i + 1; } }
 	return 0; }
 
@@ -443,7 +449,7 @@ static size_t
 parse_emph2(struct buf *ob, struct render *rndr,
 			char *data, size_t size, char c) {
 	size_t i = 0, len;
-	struct buf *work;
+	struct buf *work = 0;
 
 	if (!rndr->make.double_emphasis) return 0;
 	
@@ -454,11 +460,16 @@ parse_emph2(struct buf *ob, struct render *rndr,
 		if (i + 1 < size && data[i] == c && data[i + 1] == c
 		&& i && data[i - 1] != ' '
 		&& data[i - 1] != '\t' && data[i - 1] != '\n') {
-			work = bufnew(WORK_UNIT);
+			if (rndr->work.size < rndr->work.asize) {
+				work = rndr->work.item[rndr->work.size ++];
+				work->size = 0; }
+			else {
+				work = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, work); }
 			parse_inline(work, rndr, data, i);
 			rndr->make.double_emphasis(ob, work, c,
 				rndr->make.opaque);
-			bufrelease(work);
+			rndr->work.size -= 1;
 			return i + 2; }
 		i += 1; }
 	return 0; }
@@ -484,11 +495,17 @@ parse_emph3(struct buf *ob, struct render *rndr,
 		if (i + 2 < size && data[i + 1] == c && data[i + 2] == c
 		&& rndr->make.triple_emphasis) {
 			/* triple symbol found */
-			struct buf *work = bufnew(WORK_UNIT);
+			struct buf *work = 0;
+			if (rndr->work.size < rndr->work.asize) {
+				work = rndr->work.item[rndr->work.size ++];
+				work->size = 0; }
+			else {
+				work = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, work); }
 			parse_inline(work, rndr, data, i);
 			rndr->make.triple_emphasis(ob, work, c,
 							rndr->make.opaque);
-			bufrelease(work);
+			rndr->work.size -= 1;
 			return i + 3; }
 		else if (i + 1 < size && data[i + 1] == c) {
 			/* double symbol found, handing over to emph1 */
@@ -566,10 +583,16 @@ char_codespan(struct buf *ob, struct render *rndr,
 
 	/* real code span */
 	if (f_begin < f_end) {
-		work = bufnew(WORK_UNIT);
-		html_escape(work, data + f_begin, f_end - f_begin); }
-	rndr->make.codespan(ob, work, rndr->make.opaque);
-	bufrelease(work);
+		if (rndr->work.size < rndr->work.asize) {
+			work = rndr->work.item[rndr->work.size ++];
+			work->size = 0; }
+		else {
+			work = bufnew(WORK_UNIT);
+			parr_push(&rndr->work, work); }
+		html_escape(work, data + f_begin, f_end - f_begin);
+		rndr->make.codespan(ob, work, rndr->make.opaque);
+		rndr->work.size -= 1; }
+	else 	rndr->make.codespan(ob, 0, rndr->make.opaque);
 	return end; }
 
 
@@ -618,10 +641,16 @@ char_langle_tag(struct buf *ob, struct render *rndr,
 	struct buf work = { data, end, 0, 0, 0 };
 	if (end) {
 		if (rndr->make.autolink && altype != MKDA_NOT_AUTOLINK) {
-			struct buf *wk = bufnew(WORK_UNIT);
+			struct buf *wk = 0;
+			if (rndr->work.size < rndr->work.asize) {
+				wk = rndr->work.item[rndr->work.size ++];
+				wk->size = 0; }
+			else {
+				wk = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, wk); }
 			attr_escape(wk, data + 1, end - 2);
 			rndr->make.autolink(ob, wk, altype, rndr->make.opaque);
-			bufrelease(wk); }
+			rndr->work.size -= 1; }
 		else if (rndr->make.raw_html_tag)
 			rndr->make.raw_html_tag(ob, &work, rndr->make.opaque);
 		return end; }
@@ -647,6 +676,7 @@ char_link(struct buf *ob, struct render *rndr,
 	struct buf *content = 0;
 	struct buf *link = 0;
 	struct buf *title = 0;
+	size_t org_work_size = rndr->work.size;
 
 	/* checking whether the correct renderer exists */
 	if ((is_img && !rndr->make.image) || (!is_img && !rndr->make.link))
@@ -709,10 +739,20 @@ char_link(struct buf *ob, struct render *rndr,
 
 		/* building escaped link and title */
 		if (link_e > link_b) {
-			link = bufnew(WORK_UNIT);
+			if (rndr->work.size < rndr->work.asize) {
+				link = rndr->work.item[rndr->work.size ++];
+				link->size = 0; }
+			else {
+				link = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, link); }
 			attr_escape(link, data + link_b, link_e - link_b); }
 		if (title_e > title_b) {
-			title = bufnew(WORK_UNIT);
+			if (rndr->work.size < rndr->work.asize) {
+				title = rndr->work.item[rndr->work.size ++];
+				title->size = 0; }
+			else {
+				title = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, title); }
 			attr_escape(title, data + title_b, title_e - title_b);}
 
 		i += 1; }
@@ -740,8 +780,8 @@ char_link(struct buf *ob, struct render *rndr,
 		if (!lr) return 0;
 
 		/* keeping link and title from link_ref */
-		bufset(&link, lr->link);
-		bufset(&title, lr->title);
+		link = lr->link;
+		title = lr->title;
 		i += 1; }
 
 	/* shortcut reference style link */
@@ -756,15 +796,20 @@ char_link(struct buf *ob, struct render *rndr,
 		if (!lr) return 0;
 
 		/* keeping link and title from link_ref */
-		bufset(&link, lr->link);
-		bufset(&title, lr->title);
+		link = lr->link;
+		title = lr->title;
 
 		/* rewinding the whitespace */
 		i = txt_e + 1; }
 
 	/* building content: img alt is escaped, link content is parsed */
 	if (txt_e > 1) {
-		content = bufnew(WORK_UNIT);
+		if (rndr->work.size < rndr->work.asize) {
+			content = rndr->work.item[rndr->work.size ++];
+			content->size = 0; }
+		else {
+			content = bufnew(WORK_UNIT);
+			parr_push(&rndr->work, content); }
 		if (is_img) attr_escape(content, data + 1, txt_e - 1);
 		else parse_inline(content, rndr, data + 1, txt_e - 1); }
 
@@ -775,9 +820,7 @@ char_link(struct buf *ob, struct render *rndr,
 	else rndr->make.link(ob, link, title, content, rndr->make.opaque);
 
 	/* cleanup */
-	bufrelease(link);
-	bufrelease(title);
-	bufrelease(content);
+	rndr->work.size = org_work_size;
 	return i; }
 
 
@@ -915,7 +958,14 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end = 0, pre, work_size = 0;
 	char *work_data = 0;
-	struct buf *out = bufnew(WORK_UNIT);
+	struct buf *out = 0;
+
+	if (rndr->work.size < rndr->work.asize) {
+		out = rndr->work.item[rndr->work.size ++];
+		out->size = 0; }
+	else {
+		out = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, out); }
 
 	beg = 0;
 	while (beg < size) {
@@ -940,7 +990,7 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 
 	parse_block(out, rndr, work_data, work_size);
 	rndr->make.blockquote(ob, out, rndr->make.opaque);
-	bufrelease(out);
+	rndr->work.size -= 1;
 	return end; }
 
 
@@ -968,10 +1018,16 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 	while (work.size && data[work.size - 1] == '\n')
 		work.size -= 1;
 	if (!level) {
-		struct buf *tmp = bufnew(WORK_UNIT);
+		struct buf *tmp = 0;
+		if (rndr->work.size < rndr->work.asize) {
+			tmp = rndr->work.item[rndr->work.size ++];
+			tmp->size = 0; }
+		else {
+			tmp = bufnew(WORK_UNIT);
+			parr_push(&rndr->work, tmp); }
 		parse_inline(tmp, rndr, work.data, work.size);
 		rndr->make.paragraph(ob, tmp, rndr->make.opaque);
-		bufrelease(tmp); }
+		rndr->work.size -= 1; }
 	else {
 		if (work.size) {
 			size_t beg;
@@ -983,10 +1039,16 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 			while (work.size && data[work.size - 1] == '\n')
 				work.size -= 1;
 			if (work.size) {
-				struct buf *tmp = bufnew(WORK_UNIT);
+				struct buf *tmp = 0;
+				if (rndr->work.size < rndr->work.asize) {
+					tmp=rndr->work.item[rndr->work.size++];
+					tmp->size = 0; }
+				else {
+					tmp = bufnew(WORK_UNIT);
+					parr_push(&rndr->work, tmp); }
 				parse_inline(tmp, rndr, work.data, work.size);
 				rndr->make.paragraph(ob, tmp, rndr->make.opaque);
-				bufrelease(tmp);
+				rndr->work.size -= 1;
 				work.data += beg;
 				work.size = i - beg; }
 			else work.size = i; }
@@ -999,7 +1061,14 @@ static size_t
 parse_blockcode(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end, pre;
-	struct buf *work = bufnew(WORK_UNIT);
+	struct buf *work = 0;
+
+	if (rndr->work.size < rndr->work.asize) {
+		work = rndr->work.item[rndr->work.size ++];
+		work->size = 0; }
+	else {
+		work = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, work); }
 
 	beg = 0;
 	while (beg < size) {
@@ -1020,7 +1089,7 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 		work->size -= 1;
 	bufputc(work, '\n');
 	rndr->make.blockcode(ob, work, rndr->make.opaque);
-	bufrelease(work);
+	rndr->work.size -= 1;
 	return beg; }
 
 
@@ -1029,8 +1098,15 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 static size_t
 parse_listitem(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int *flags) {
-	struct buf *work = bufnew(WORK_UNIT);
+	struct buf *work = 0;
 	size_t beg = 0, end, pre;
+
+	if (rndr->work.size < rndr->work.asize) {
+		work = rndr->work.item[rndr->work.size ++];
+		work->size = 0; }
+	else {
+		work = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, work); }
 
 	while (beg < size) {
 		for (end = beg + 1; end < size && data[end - 1] != '\n';
@@ -1055,12 +1131,18 @@ parse_listitem(struct buf *ob, struct render *rndr,
 		beg = end; }
 
 	if (*flags & MKD_LI_BLOCK) {
-		struct buf *wk2 = bufnew(WORK_UNIT);
+		struct buf *wk2 = 0;
+		if (rndr->work.size < rndr->work.asize) {
+			wk2 = rndr->work.item[rndr->work.size ++];
+			wk2->size = 0; }
+		else {
+			wk2 = bufnew(WORK_UNIT);
+			parr_push(&rndr->work, wk2); }
 		parse_block(wk2, rndr, work->data, work->size);
-		bufrelease(work);
+		rndr->work.size -= 1;
 		work = wk2; }
 	rndr->make.listitem(ob, work, *flags, rndr->make.opaque);
-	bufrelease(work);
+	rndr->work.size -= 1;
 	return beg; }
 
 
@@ -1068,8 +1150,15 @@ parse_listitem(struct buf *ob, struct render *rndr,
 static size_t
 parse_list(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int flags) {
-	struct buf *work = bufnew(WORK_UNIT);
+	struct buf *work = 0;
 	size_t i = 0, pre;
+
+	if (rndr->work.size < rndr->work.asize) {
+		work = rndr->work.item[rndr->work.size ++];
+		work->size = 0; }
+	else {
+		work = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, work); }
 
 	while (i < size) {
 		pre = prefix_oli(data + i, size - i);
@@ -1079,7 +1168,7 @@ parse_list(struct buf *ob, struct render *rndr,
 		i += parse_listitem(work, rndr, data + i, size - i, &flags); }
 
 	rndr->make.list(ob, work, flags, rndr->make.opaque);
-	bufrelease(work);
+	rndr->work.size -= 1;
 	return i; }
 
 
@@ -1264,6 +1353,7 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	if (!rndrer) return;
 	rndr.make = *rndrer;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
+	parr_init(&rndr.work);
 	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;
 	if ((rndr.make.emphasis || rndr.make.double_emphasis
 						|| rndr.make.triple_emphasis)
@@ -1334,6 +1424,12 @@ BUFPUTSL(ob, ")\n");
 	for (i = 0; i < rndr.refs.size; i += 1) {
 		bufrelease(lr[i].id);
 		bufrelease(lr[i].link);
-		bufrelease(lr[i].title); } }
+		bufrelease(lr[i].title); }
+	arr_free(&rndr.refs);
+if (rndr.work.size)
+fprintf(stderr, "Warning: %zu working buffers unfreed\n", rndr.work.size);
+	for (i = 0; i < rndr.work.asize; i += 1)
+		bufrelease(rndr.work.item[i]);
+	parr_free(&rndr.work); }
 
 /* vim: set filetype=c: */
