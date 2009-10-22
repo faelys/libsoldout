@@ -27,6 +27,8 @@
 #define TEXT_UNIT 64	/* unit for the copy of the input buffer */
 #define WORK_UNIT 64	/* block-level working buffer */
 
+#define MKD_LI_END 8	/* internal list flag */
+
 
 /***************
  * LOCAL TYPES *
@@ -997,17 +999,6 @@ prefix_code(char *data, size_t size) {
 			&& data[2] == ' ' && data[3] == ' ') return 4;
 	return 0; }
 
-/* prefix_li • returns blank prefix length inside list items */
-static size_t
-prefix_li(char *data, size_t size) {
-	size_t i = 0;
-	if (i < size && data[i] == '\t') return 1;
-	if (i < size && data[i] == ' ') { i += 1;
-	if (i < size && data[i] == ' ') { i += 1;
-	if (i < size && data[i] == ' ') { i += 1;
-	if (i < size && data[i] == ' ') { i += 1; } } } }
-	return i; }
-
 /* prefix_oli • returns ordered list item prefix */
 static size_t
 prefix_oli(char *data, size_t size) {
@@ -1019,7 +1010,7 @@ prefix_oli(char *data, size_t size) {
 	while (i < size && data[i] >= '0' && data[i] <= '9') i += 1;
 	if (i + 1 >= size || data[i] != '.'
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t')) return 0;
-	return i + 1; }
+	return i + 2; }
 
 
 /* prefix_uli • returns ordered list item prefix */
@@ -1033,7 +1024,7 @@ prefix_uli(char *data, size_t size) {
 	|| (data[i] != '*' && data[i] != '+' && data[i] != '-')
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t'))
 		return 0;
-	return i + 1; }
+	return i + 2; }
 
 
 /* parse_block • parsing of one block, returning next char to parse */
@@ -1187,51 +1178,103 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 static size_t
 parse_listitem(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int *flags) {
-	struct buf *work = 0;
-	size_t beg = 0, end, pre;
+	struct buf *work = 0, *inter = 0;
+	size_t beg = 0, end, pre, sublist = 0, orgpre = 0, i;
+	int in_empty = 0, has_inside_empty = 0;
 
+	/* keeping book of the first indentation prefix */
+	if (size > 1 && data[0] == ' ') { orgpre = 1;
+	if (size > 2 && data[1] == ' ') { orgpre = 2;
+	if (size > 3 && data[2] == ' ') { orgpre = 3; } } }
+	beg = prefix_uli(data, size);
+	if (!beg) beg = prefix_oli(data, size);
+	if (!beg) return 0;
+	/* skipping to the beginning of the following line */
+	end = beg;
+	while (end < size && data[end - 1] != '\n') end += 1;
+
+	/* getting working buffers */
 	if (rndr->work.size < rndr->work.asize) {
 		work = rndr->work.item[rndr->work.size ++];
 		work->size = 0; }
 	else {
 		work = bufnew(WORK_UNIT);
 		parr_push(&rndr->work, work); }
+	if (rndr->work.size < rndr->work.asize) {
+		inter = rndr->work.item[rndr->work.size ++];
+		inter->size = 0; }
+	else {
+		inter = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, inter); }
 
+	/* putting the first line into the working buffer */
+	bufput(work, data + beg, end - beg);
+	beg = end;
+
+	/* process the following lines */
 	while (beg < size) {
-		for (end = beg + 1; end < size && data[end - 1] != '\n';
-							end += 1);
+		end += 1;
+		while (end < size && data[end - 1] != '\n') end += 1;
+
+		/* process an empty line */
 		if (is_empty(data + beg, end - beg)) {
-			if (end < size
-			&& !is_empty(data + end, size - end)) {
-				if (prefix_oli(data + end, size - end)
-				||  prefix_uli(data + end, size - end))
-					*flags |= MKD_LI_BLOCK;
-				if (!prefix_li(data + end, size - end)) {
-					beg = end;
-					break; }
-				else *flags |= MKD_LI_BLOCK; } }
-		pre = prefix_li(data + beg, end - beg);
-		if (pre) beg += pre;
-		else if (prefix_oli(data + beg, end - beg)
-		||  prefix_uli(data + beg, end - beg))
-			break;
-		if (beg < end)
-			bufput(work, data + beg, end - beg);
+			in_empty = 1;
+			beg = end;
+			continue; }
+
+		/* calculating the indentation */
+		i = 0;
+		if (end - beg > 1 && data[beg] == ' ') { i = 1;
+		if (end - beg > 2 && data[beg + 1] == ' ') { i = 2;
+		if (end - beg > 3 && data[beg + 2] == ' ') { i = 3;
+		if (end - beg > 3 && data[beg + 3] == ' ') { i = 4; } } } }
+		pre = i;
+		if (data[beg] == '\t') { i = 1; pre = 8; }
+
+		/* checking for a new item */
+		if ((prefix_uli(data + beg + i, end - beg - i)
+			&& !is_hrule(data + beg + i, end - beg - i))
+		||  prefix_oli(data + beg + i, end - beg - i)) {
+			if (in_empty) has_inside_empty = 1;
+			if (pre == orgpre) /* the following item must have */
+				break;             /* the same indentation */
+			if (!sublist) sublist = work->size; }
+
+		/* joining only indented stuff after empty lines */
+		else if (in_empty && i < 4 && data[beg] != '\t') {
+				*flags |= MKD_LI_END;
+				break; }
+		else if (in_empty) {
+			bufputc(work, '\n');
+			has_inside_empty = 1; }
+		in_empty = 0;
+
+		/* adding the line without prefix into the working buffer */
+		bufput(work, data + beg + i, end - beg - i);
 		beg = end; }
 
+	/* render of li contents */
+	if (has_inside_empty) *flags |= MKD_LI_BLOCK;
 	if (*flags & MKD_LI_BLOCK) {
-		struct buf *wk2 = 0;
-		if (rndr->work.size < rndr->work.asize) {
-			wk2 = rndr->work.item[rndr->work.size ++];
-			wk2->size = 0; }
-		else {
-			wk2 = bufnew(WORK_UNIT);
-			parr_push(&rndr->work, wk2); }
-		parse_block(wk2, rndr, work->data, work->size);
-		rndr->work.size -= 1;
-		work = wk2; }
-	rndr->make.listitem(ob, work, *flags, rndr->make.opaque);
-	rndr->work.size -= 1;
+		/* intermediate render of block li */
+		if (sublist && sublist < work->size) {
+			parse_block(inter, rndr, work->data, sublist);
+			parse_block(inter, rndr, work->data + sublist,
+						work->size - sublist); }
+		else
+			parse_block(inter, rndr, work->data, work->size); }
+	else {
+		/* intermediate render of inline li */
+		if (sublist && sublist < work->size) {
+			parse_inline(inter, rndr, work->data, sublist);
+			parse_block(inter, rndr, work->data + sublist,
+						work->size - sublist); }
+		else
+			parse_inline(inter, rndr, work->data, work->size); }
+
+	/* render of li itself */
+	rndr->make.listitem(ob, inter, *flags, rndr->make.opaque);
+	rndr->work.size -= 2;
 	return beg; }
 
 
@@ -1240,7 +1283,7 @@ static size_t
 parse_list(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int flags) {
 	struct buf *work = 0;
-	size_t i = 0, pre;
+	size_t i = 0, j;
 
 	if (rndr->work.size < rndr->work.asize) {
 		work = rndr->work.item[rndr->work.size ++];
@@ -1250,11 +1293,9 @@ parse_list(struct buf *ob, struct render *rndr,
 		parr_push(&rndr->work, work); }
 
 	while (i < size) {
-		pre = prefix_oli(data + i, size - i);
-		if (!pre) pre = prefix_uli(data + i, size - i);
-		if (!pre) break;
-		i += pre;
-		i += parse_listitem(work, rndr, data + i, size - i, &flags); }
+		j = parse_listitem(work, rndr, data + i, size - i, &flags);
+		i += j;
+		if (!j || (flags & MKD_LI_END)) break; }
 
 	rndr->make.list(ob, work, flags, rndr->make.opaque);
 	rndr->work.size -= 1;
