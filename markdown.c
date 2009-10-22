@@ -226,6 +226,62 @@ rndr_triple_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
 
 
 
+/*******************
+ * HTML 4 RENDERER *
+ *******************/
+
+static void
+html_hrule(struct buf *ob, void *opaque) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<hr>\n"); }
+
+static int
+html_image(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *alt, void *opaque) {
+	if (!link || !link->size) return 0;
+	BUFPUTSL(ob, "<img src=\"");
+	bufput(ob, link->data, link->size);
+	BUFPUTSL(ob, "\" alt=\"");
+	if (alt && alt->size)
+		bufput(ob, alt->data, alt->size);
+	if (title && title->size) {
+		BUFPUTSL(ob, "\" title=\"");
+		bufput(ob, title->data, title->size); }
+	BUFPUTSL(ob, "\">");
+	return 1; }
+
+static int
+html_linebreak(struct buf *ob, void *opaque) {
+	BUFPUTSL(ob, "<br>\n");
+	return 1; }
+
+
+/* exported renderer structure */
+const struct mkd_renderer mkd_html = {
+	rndr_blockcode,
+	rndr_blockquote,
+	rndr_raw_block,
+	rndr_header,
+	html_hrule,
+	rndr_list,
+	rndr_listitem,
+	rndr_paragraph,
+
+	rndr_autolink,
+	rndr_codespan,
+	rndr_double_emphasis,
+	rndr_emphasis,
+	html_image,
+	html_linebreak,
+	rndr_link,
+	rndr_raw_inline,
+	rndr_triple_emphasis,
+
+	"*_",
+	NULL };
+
+
+
 /**********************
  * XHTML 1.0 RENDERER *
  **********************/

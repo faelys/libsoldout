@@ -75,6 +75,7 @@ struct mkd_renderer {
  * PREDEFINED RENDERERS *
  ************************/
 
+extern const struct mkd_renderer mkd_html;  /* HTML 4 renderer */
 extern const struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
 
 
