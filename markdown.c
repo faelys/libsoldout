@@ -1936,7 +1936,7 @@ BUFPUTSL(ob, ")\n");
 		bufrelease(lr[i].title); }
 	arr_free(&rndr.refs);
 if (rndr.work.size)
-fprintf(stderr, "Warning: %zu working buffers unfreed\n", rndr.work.size);
+fprintf(stderr, "Warning: %i working buffers unfreed\n", rndr.work.size);
 	for (i = 0; i < rndr.work.asize; i += 1)
 		bufrelease(rndr.work.item[i]);
 	parr_free(&rndr.work); }
