@@ -1159,10 +1159,12 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 		else if (!is_empty(data + beg, end - beg))
 			/* non-empty non-prefixed line breaks the pre */
 			break;
-		if (beg < end)
+		if (beg < end) {
 			/* verbatim copy to the working buffer,
 				escaping entities */
-			html_escape(work, data + beg, end - beg);
+			if (is_empty(data + beg, end - beg))
+				bufputc(work, '\n');
+			else html_escape(work, data + beg, end - beg); }
 		beg = end; }
 
 	while (work->size && work->data[work->size - 1] == '\n')
