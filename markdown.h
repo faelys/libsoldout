@@ -39,6 +39,7 @@ struct mkd_renderer {
 	/* block level callbacks - NULL skips the block */
 	void (*blockcode)(struct buf *ob, struct buf *text, void *opaque);
 	void (*blockquote)(struct buf *ob, struct buf *text, void *opaque);
+	void (*blockhtml)(struct buf *ob, struct buf *text, void *opaque);
 	void (*header)(struct buf *ob, struct buf *text,
 						int level, void *opaque);
 	void (*hrule)(struct buf *ob, void *opaque);
