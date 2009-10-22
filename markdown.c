@@ -786,10 +786,9 @@ char_link(struct buf *ob, struct render *rndr,
 	while (i < size
 	&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
 		i += 1;
-	if (i >= size) return 0;
 
 	/* inline style link */
-	if (data[i] == '(') {
+	if (i < size && data[i] == '(') {
 		/* skipping initial whitespace */
 		i += 1;
 		while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
@@ -851,7 +850,7 @@ char_link(struct buf *ob, struct render *rndr,
 		i += 1; }
 
 	/* reference style link */
-	else if (data[i] == '[') {
+	else if (i < size && data[i] == '[') {
 		struct buf id = { 0, 0, 0, 0, 0 };
 		struct link_ref *lr;
 
