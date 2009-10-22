@@ -82,11 +82,11 @@ arr_newitem(struct array *);
 void
 arr_remove(struct array *, int);
 
-/* arr_sorted_find • O(n log n) search in a sorted array, returning entry */
+/* arr_sorted_find • O(log n) search in a sorted array, returning entry */
 void *
 arr_sorted_find(struct array *, void *key, array_cmp_fn cmp);
 
-/* arr_sorted_find_i • O(n log n) search in a sorted array,
+/* arr_sorted_find_i • O(log n) search in a sorted array,
  *      returning index of the smallest element larger than the key */
 int
 arr_sorted_find_i(struct array *, void *key, array_cmp_fn cmp);
@@ -128,11 +128,11 @@ parr_push(struct parray *, void *);
 void *
 parr_remove(struct parray *, int);
 
-/* parr_sorted_find • O(n log n) search in a sorted array, returning entry */
+/* parr_sorted_find • O(log n) search in a sorted array, returning entry */
 void *
 parr_sorted_find(struct parray *, void *key, array_cmp_fn cmp);
 
-/* parr_sorted_find_i • O(n log n) search in a sorted array,
+/* parr_sorted_find_i • O(log n) search in a sorted array,
  *      returning index of the smallest element larger than the key */
 int
 parr_sorted_find_i(struct parray *, void *key, array_cmp_fn cmp);
