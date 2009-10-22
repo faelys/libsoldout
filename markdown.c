@@ -338,6 +338,166 @@ const struct mkd_renderer mkd_xhtml = {
 
 
 
+/**********************
+ * DISCOUNT RENDERERS *
+ **********************/
+
+static int
+print_link_wxh(struct buf *ob, struct buf *link) {
+	size_t eq, ex, end;
+	eq = link->size - 1;
+	while (eq > 0 && (link->data[eq - 1] != ' ' || link->data[eq] != '='))
+		eq -= 1;
+	if (eq <= 0) return 0;
+	ex = eq + 1;
+	while (ex < link->size
+	&& link->data[ex] >= '0' && link->data[ex] <= '9')
+		ex += 1;
+	if (ex >= link->size || ex == eq + 1 || link->data[ex] != 'x') return 0;
+	end = ex + 1;
+	while (end < link->size
+	&& link->data[end] >= '0' && link->data[end] <= '9')
+		end += 1;
+	if (end == ex + 1) return 0;
+	/* everything is fine, proceeding to actual printing */
+	bufput(ob, link->data, eq - 1);
+	BUFPUTSL(ob, "\" width=");
+	bufput(ob, link->data + eq + 1, ex - eq - 1);
+	BUFPUTSL(ob, " height=");
+	bufput(ob, link->data + ex + 1, end - ex - 1);
+	return 1; }
+
+static int
+discount_image(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *alt, int xhtml) {
+	if (!link || !link->size) return 0;
+	BUFPUTSL(ob, "<img src=\"");
+	if (!print_link_wxh(ob, link)) {
+		bufput(ob, link->data, link->size);
+		bufputc(ob, '"'); }
+	BUFPUTSL(ob, " alt=\"");
+	if (alt && alt->size)
+		bufput(ob, alt->data, alt->size);
+	if (title && title->size) {
+		BUFPUTSL(ob, "\" title=\"");
+		bufput(ob, title->data, title->size); }
+	bufputs(ob, xhtml ? "\" />" : "\">");
+	return 1; }
+
+static int
+html_discount_image(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *alt, void *opaque) {
+	return discount_image(ob, link, title, alt, 0); }
+
+static int
+xhtml_discount_image(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *alt, void *opaque) {
+	return discount_image(ob, link, title, alt, 1); }
+
+static int
+discount_link(struct buf *ob, struct buf *link, struct buf *title,
+			struct buf *content, void *opaque) {
+	if (!link) return rndr_link(ob, link, title, content, opaque);
+	else if (link->size > 5 && !strncasecmp(link->data, "abbr:", 5)) {
+		BUFPUTSL(ob, "<abbr title=\"");
+		bufput(ob, link->data + 5, link->size - 5);
+		BUFPUTSL(ob, "\">");
+		bufput(ob, content->data, content->size);
+		BUFPUTSL(ob, "</abbr>");
+		return 1; }
+	else if (link->size > 6 && !strncasecmp(link->data, "class:", 6)) {
+		BUFPUTSL(ob, "<span class=\"");
+		bufput(ob, link->data + 6, link->size - 6);
+		BUFPUTSL(ob, "\">");
+		bufput(ob, content->data, content->size);
+		BUFPUTSL(ob, "</span>");
+		return 1; }
+	else if (link->size > 3 && !strncasecmp(link->data, "id:", 3)) {
+		BUFPUTSL(ob, "<a id=\"");
+		bufput(ob, link->data + 3, link->size - 3);
+		BUFPUTSL(ob, "\">");
+		bufput(ob, content->data, content->size);
+		BUFPUTSL(ob, "</span>");
+		return 1; }
+	else if (link->size > 4 && !strncasecmp(link->data, "raw:", 4)) {
+		bufput(ob, link->data + 4, link->size - 4);
+		return 1; }
+	return rndr_link(ob, link, title, content, opaque); }
+
+static void
+discount_blockquote(struct buf *ob, struct buf *text, void *opaque) {
+	size_t i = 5, size = text->size;
+	char *data = text->data;
+	if (text->size < 5 || strncasecmp(text->data, "<p>%", 4)) {
+		rndr_blockquote(ob, text, opaque);
+		return; }
+	while (i < size && data[i] != '\n' && data[i] != '%')
+		i += 1;
+	if (i >= size || data[i] != '%') {
+		rndr_blockquote(ob, text, opaque);
+		return; }
+	BUFPUTSL(ob, "<div class=\"");
+	bufput(ob, text->data + 4, i - 4);
+	BUFPUTSL(ob, "\"><p>");
+	if (i + 4 >= text->size && !strncasecmp(text->data + i, "</p>", 4)) {
+		size_t old_i = i;
+		i += 4;
+		while (i + 3 < text->size
+		&& (data[i] != '<' || data[i + 1] != 'p' || data[i + 2] != '>'))
+			i += 1;
+		if (i + 3 >= text->size) i = old_i; }
+	bufput(ob, text->data + i, text->size - i);
+	BUFPUTSL(ob, "</div>\n"); }
+
+/* exported renderer structures */
+const struct mkd_renderer discount_html = {
+	rndr_blockcode,
+	discount_blockquote,
+	rndr_raw_block,
+	rndr_header,
+	html_hrule,
+	rndr_list,
+	rndr_listitem,
+	rndr_paragraph,
+
+	rndr_autolink,
+	rndr_codespan,
+	rndr_double_emphasis,
+	rndr_emphasis,
+	html_discount_image,
+	html_linebreak,
+	discount_link,
+	rndr_raw_inline,
+	rndr_triple_emphasis,
+
+	"*_",
+	NULL };
+const struct mkd_renderer discount_xhtml = {
+	rndr_blockcode,
+	discount_blockquote,
+	rndr_raw_block,
+	rndr_header,
+	xhtml_hrule,
+	rndr_list,
+	rndr_listitem,
+	rndr_paragraph,
+
+	rndr_autolink,
+	rndr_codespan,
+	rndr_double_emphasis,
+	rndr_emphasis,
+	xhtml_discount_image,
+	xhtml_linebreak,
+	discount_link,
+	rndr_raw_inline,
+	rndr_triple_emphasis,
+
+	"*_",
+	NULL };
+
+
+
+
 /***************************
  * STATIC HELPER FUNCTIONS *
  ***************************/
