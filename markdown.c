@@ -763,6 +763,7 @@ char_link(struct buf *ob, struct render *rndr,
 	struct buf *link = 0;
 	struct buf *title = 0;
 	size_t org_work_size = rndr->work.size;
+	int text_has_nl = 0;
 
 	/* checking whether the correct renderer exists */
 	if ((is_img && !rndr->make.image) || (!is_img && !rndr->make.link))
@@ -770,7 +771,8 @@ char_link(struct buf *ob, struct render *rndr,
 
 	/* looking for the matching closing bracket */
 	for (level = 1; i < size; i += 1)
-		if (data[i - 1] == '\\') continue;
+		if (data[i] == '\n') text_has_nl = 1;
+		else if (data[i - 1] == '\\') continue;
 		else if (data[i] == '[') level += 1;
 		else if (data[i] == ']') {
 			level -= 1;
@@ -862,8 +864,25 @@ char_link(struct buf *ob, struct render *rndr,
 
 		/* finding the link_ref */
 		if (link_b == link_e) {
-			id.data = data + 1;
-			id.size = txt_e - 1; }
+			if (text_has_nl) {
+				struct buf *b = 0;
+				size_t j;
+				if (rndr->work.size < rndr->work.asize) {
+					b = rndr->work.item[rndr->work.size ++];
+					b->size = 0; }
+				else {
+					b = bufnew(WORK_UNIT);
+					parr_push(&rndr->work, b); }
+				for (j = 1; j < txt_e; j += 1)
+					if (data[j] != '\n')
+						bufputc(b, data[j]);
+					else if (data[j - 1] != ' ')
+						bufputc(b, ' ');
+				id.data = b->data;
+				id.size = b->size; }
+			else {
+				id.data = data + 1;
+				id.size = txt_e - 1; } }
 		else {
 			id.data = data + link_b;
 			id.size = link_e - link_b; }
@@ -880,9 +899,28 @@ char_link(struct buf *ob, struct render *rndr,
 		struct buf id = { 0, 0, 0, 0, 0 };
 		struct link_ref *lr;
 
+		/* crafting the id */
+		if (text_has_nl) {
+			struct buf *b = 0;
+			size_t j;
+			if (rndr->work.size < rndr->work.asize) {
+				b = rndr->work.item[rndr->work.size ++];
+				b->size = 0; }
+			else {
+				b = bufnew(WORK_UNIT);
+				parr_push(&rndr->work, b); }
+			for (j = 1; j < txt_e; j += 1)
+				if (data[j] != '\n')
+					bufputc(b, data[j]);
+				else if (data[j - 1] != ' ')
+					bufputc(b, ' ');
+			id.data = b->data;
+			id.size = b->size; }
+		else {
+			id.data = data + 1;
+			id.size = txt_e - 1; }
+
 		/* finding the link_ref */
-		id.data = data + 1;
-		id.size = txt_e - 1;
 		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
 		if (!lr) return 0;
 
