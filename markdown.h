@@ -71,20 +71,6 @@ struct mkd_renderer {
 
 
 
-/************************
- * PREDEFINED RENDERERS *
- ************************/
-
-/* original markdown renderers */
-extern const struct mkd_renderer mkd_html;  /* HTML 4 renderer */
-extern const struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
-
-/* renderers with some discount extensions */
-extern const struct mkd_renderer discount_html;
-extern const struct mkd_renderer discount_xhtml;
-
-
-
 /*********
  * FLAGS *
  *********/

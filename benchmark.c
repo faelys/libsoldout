@@ -17,6 +17,7 @@
  */
 
 #include "markdown.h"
+#include "renderers.h"
 
 #include <stdio.h>
 #include <errno.h>

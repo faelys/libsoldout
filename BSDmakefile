@@ -27,10 +27,10 @@ all:		markdown
 
 # Main project links
 
-markdown:	main.o markdown.o array.o buffer.o
+markdown:	main.o markdown.o array.o buffer.o renderers.o
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
-benchmark:	benchmark.o markdown.o array.o buffer.o
+benchmark:	benchmark.o markdown.o array.o buffer.o renderers.o
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
 clean:
