@@ -934,7 +934,8 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 		beg = end; }
 
 	parse_block(out, rndr, work_data, work_size);
-	rndr->make.blockquote(ob, out, rndr->make.opaque);
+	if (rndr->make.blockquote)
+		rndr->make.blockquote(ob, out, rndr->make.opaque);
 	rndr->work.size -= 1;
 	return end; }
 
@@ -971,7 +972,8 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 			tmp = bufnew(WORK_UNIT);
 			parr_push(&rndr->work, tmp); }
 		parse_inline(tmp, rndr, work.data, work.size);
-		rndr->make.paragraph(ob, tmp, rndr->make.opaque);
+		if (rndr->make.paragraph)
+			rndr->make.paragraph(ob, tmp, rndr->make.opaque);
 		rndr->work.size -= 1; }
 	else {
 		if (work.size) {
@@ -992,12 +994,15 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 					tmp = bufnew(WORK_UNIT);
 					parr_push(&rndr->work, tmp); }
 				parse_inline(tmp, rndr, work.data, work.size);
-				rndr->make.paragraph(ob, tmp, rndr->make.opaque);
+				if (rndr->make.paragraph)
+					rndr->make.paragraph(ob, tmp,
+							rndr->make.opaque);
 				rndr->work.size -= 1;
 				work.data += beg;
 				work.size = i - beg; }
 			else work.size = i; }
-		rndr->make.header(ob, &work, level, rndr->make.opaque); }
+		if (rndr->make.header)
+			rndr->make.header(ob, &work, level,rndr->make.opaque);}
 	return end; }
 
 
@@ -1035,7 +1040,8 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 	while (work->size && work->data[work->size - 1] == '\n')
 		work->size -= 1;
 	bufputc(work, '\n');
-	rndr->make.blockcode(ob, work, rndr->make.opaque);
+	if (rndr->make.blockcode)
+		rndr->make.blockcode(ob, work, rndr->make.opaque);
 	rndr->work.size -= 1;
 	return beg; }
 
@@ -1140,7 +1146,8 @@ parse_listitem(struct buf *ob, struct render *rndr,
 			parse_inline(inter, rndr, work->data, work->size); }
 
 	/* render of li itself */
-	rndr->make.listitem(ob, inter, *flags, rndr->make.opaque);
+	if (rndr->make.listitem)
+		rndr->make.listitem(ob, inter, *flags, rndr->make.opaque);
 	rndr->work.size -= 2;
 	return beg; }
 
@@ -1164,7 +1171,8 @@ parse_list(struct buf *ob, struct render *rndr,
 		i += j;
 		if (!j || (flags & MKD_LI_END)) break; }
 
-	rndr->make.list(ob, work, flags, rndr->make.opaque);
+	if (rndr->make.list)
+		rndr->make.list(ob, work, flags, rndr->make.opaque);
 	rndr->work.size -= 1;
 	return i; }
 
@@ -1187,7 +1195,8 @@ parse_atxheader(struct buf *ob, struct render *rndr,
 	while (end && data[end - 1] == '#') end -= 1;
 	while (end && (data[end - 1] == ' ' || data[end - 1] == '\t')) end -= 1;
 	work.size = end - i;
-	rndr->make.header(ob, &work, level, rndr->make.opaque);
+	if (rndr->make.header)
+		rndr->make.header(ob, &work, level, rndr->make.opaque);
 	return skip; }
 
 
@@ -1245,7 +1254,8 @@ parse_htmlblock(struct buf *ob, struct render *rndr,
 				j = is_empty(data + i, size - i);
 				if (j) {
 					work.size = i + j;
-					rndr->make.blockhtml(ob, &work,
+					if (rndr->make.blockhtml)
+						rndr->make.blockhtml(ob, &work,
 							rndr->make.opaque);
 					return work.size; } }
 
@@ -1261,7 +1271,8 @@ parse_htmlblock(struct buf *ob, struct render *rndr,
 				j = is_empty(data + i, size - i);
 				if (j) {
 					work.size = i + j;
-					rndr->make.blockhtml(ob, &work,
+					if (rndr->make.blockhtml)
+						rndr->make.blockhtml(ob, &work,
 							rndr->make.opaque);
 					return work.size; } } }
 
@@ -1306,7 +1317,8 @@ parse_htmlblock(struct buf *ob, struct render *rndr,
 
 	/* the end of the block has been found */
 	work.size = i;
-	rndr->make.blockhtml(ob, &work, rndr->make.opaque);
+	if (rndr->make.blockhtml)
+		rndr->make.blockhtml(ob, &work, rndr->make.opaque);
 	return i; }
 
 
@@ -1328,7 +1340,8 @@ parse_block(struct buf *ob, struct render *rndr,
 		else if ((i = is_empty(txt_data, end)) != 0)
 			beg += i;
 		else if (is_hrule(txt_data, end)) {
-			rndr->make.hrule(ob, rndr->make.opaque);
+			if (rndr->make.hrule)
+				rndr->make.hrule(ob, rndr->make.opaque);
 			while (beg < size && data[beg] != '\n') beg += 1;
 			beg += 1; }
 		else if (prefix_quote(txt_data, end))
