@@ -415,3 +415,127 @@ const struct mkd_renderer discount_xhtml = {
 
 	"*_",
 	NULL };
+
+
+/****************************
+ * NATACHA'S OWN EXTENSIONS *
+ ****************************/
+
+static void
+nat_span(struct buf *ob, struct buf *text, char *tag) {
+	bufprintf(ob, "<%s>", tag);
+	bufput(ob, text->data, text->size);
+	bufprintf(ob, "</%s>", tag); }
+
+static int
+nat_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
+	if (!text || !text->size || c == '+' || c == '-') return 0;
+	if (c == '|') nat_span(ob, text, "span");
+	else nat_span(ob, text, "em");
+	return 1; }
+
+static int
+nat_double_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
+	if (!text || !text->size || c == '|') return 0;
+	if (c == '+') nat_span(ob, text, "ins");
+	else if (c == '-') nat_span(ob, text, "del");
+	else nat_span(ob, text, "strong");
+	return 1; }
+
+static int
+nat_triple_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
+	if (!text || !text->size || c == '+' || c == '-' || c == '|') return 0;
+	BUFPUTSL(ob, "<strong><em>");
+	bufput(ob, text->data, text->size);
+	BUFPUTSL(ob, "</em></strong>");
+	return 1; }
+
+static void
+nat_header(struct buf *ob, struct buf *text, int level, void *opaque) {
+	size_t i = 0;
+	if (ob->size) bufputc(ob, '\n');
+	while (i < text->size && (text->data[i] == '-' || text->data[i] == '_'
+			 ||  text->data[i] == '.' || text->data[i] == ':'
+			 || (text->data[i] >= 'a' && text->data[i] <= 'z')
+			 || (text->data[i] >= 'A' && text->data[i] <= 'Z')
+			 || (text->data[i] >= '0' && text->data[i] <= '0')))
+		i += 1;
+	bufprintf(ob, "<h%d", level);
+	if (i < text->size && text->data[i] == '#') {
+		bufprintf(ob, " id=\"%.*s\">", (int)i, text->data);
+		i += 1; }
+	else {
+		bufputc(ob, '>');
+		i = 0; }
+	bufput(ob, text->data + i, text->size - i);
+	bufprintf(ob, "</h%d>\n", level); }
+
+static void
+nat_paragraph(struct buf *ob, struct buf *text, void *opaque) {
+	size_t i = 0;
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<p");
+	if (text && text->size && text->data[0] == '(') {
+		i = 1;
+		while (i < text->size && (text->data[i] == ' '
+			/* this seems to be a bit more restrictive than */
+			/* what is allowed for class names */
+			 || (text->data[i] >= 'a' && text->data[i] <= 'z')
+			 || (text->data[i] >= 'A' && text->data[i] <= 'Z')
+			 || (text->data[i] >= '0' && text->data[i] <= '0')))
+			i += 1;
+		if (i < text->size && text->data[i] == ')') {
+			bufprintf(ob, " class=\"%.*s\"",
+						(int)(i - 1), text->data + 1);
+			i += 1; }
+		else i = 0; }
+	bufputc(ob, '>');
+	if (text) bufput(ob, text->data + i, text->size - i);
+	BUFPUTSL(ob, "</p>\n"); }
+
+
+/* exported renderer structures */
+const struct mkd_renderer nat_html = {
+	rndr_blockcode,
+	discount_blockquote,
+	rndr_raw_block,
+	nat_header,
+	html_hrule,
+	rndr_list,
+	rndr_listitem,
+	nat_paragraph,
+
+	rndr_autolink,
+	rndr_codespan,
+	nat_double_emphasis,
+	nat_emphasis,
+	html_discount_image,
+	html_linebreak,
+	discount_link,
+	rndr_raw_inline,
+	nat_triple_emphasis,
+
+	"*_-+|",
+	NULL };
+const struct mkd_renderer nat_xhtml = {
+	rndr_blockcode,
+	discount_blockquote,
+	rndr_raw_block,
+	nat_header,
+	xhtml_hrule,
+	rndr_list,
+	rndr_listitem,
+	nat_paragraph,
+
+	rndr_autolink,
+	rndr_codespan,
+	nat_double_emphasis,
+	nat_emphasis,
+	xhtml_discount_image,
+	xhtml_linebreak,
+	discount_link,
+	rndr_raw_inline,
+	nat_triple_emphasis,
+
+	"*_-+|",
+	NULL };

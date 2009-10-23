@@ -29,4 +29,8 @@ extern const struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
 extern const struct mkd_renderer discount_html;
 extern const struct mkd_renderer discount_xhtml;
 
+/* renderers with Natasha's own extensions */
+extern const struct mkd_renderer nat_html;
+extern const struct mkd_renderer nat_xhtml;
+
 #endif /* ndef MARKDOWN_RENDERERS_H */
