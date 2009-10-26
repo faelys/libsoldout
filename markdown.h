@@ -64,6 +64,10 @@ struct mkd_renderer {
 	int (*triple_emphasis)(struct buf *ob, struct buf *text,
 						char c, void *opaque);
 
+	/* low level callbacks - NULL copies input directly into the output */
+	void (*entity)(struct buf *ob, struct buf *entity, void *opaque);
+	void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
+
 	/* renderer data */
 	const char *emph_chars; /* chars that trigger emphasis rendering */
 	void *opaque; /* opaque data send to every rendering callback */
