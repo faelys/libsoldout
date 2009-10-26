@@ -23,7 +23,7 @@ bit too integrated and focused on HTML output for my taste, and
 PEG-markdown seemed to have a lot of dependencies and stuff. So I wrote my
 own.
 
-I like to keep things simple, so I wrote a functions that performs *only*
+I like to keep things simple, so I wrote a function that performs *only*
 markdown parsing: no file reading or writing, no (X)HTML considerations,
 etc. The actual output is performed by a set of dedicated callback
 functions, called here a renderer. Some example renderers are provided, but
@@ -148,6 +148,10 @@ data. I think the struct declaration is pretty obvious:
 		int (*triple_emphasis)(struct buf *ob, struct buf *text,
 							char c, void *opaque);
 
+	>·······/* low level callbacks - NULL copies input directly into the output */
+	>·······void (*entity)(struct buf *ob, struct buf *entity, void *opaque);
+	>·······void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
+
 		/* renderer data */
 		const char *emph_chars; /* chars that trigger emphasis rendering */
 		void *opaque; /* opaque data send to every rendering callback */
@@ -197,6 +201,16 @@ should be copied verbatim (zero return value). This allows you to only
 accept some specific inputs. For example, my extension for `<ins>` and
 `<del>` spans asks *exactly* two '-' or '+' as delimiters, when `emphasis`
 and `triple_emphasis` are called with '-' or '+', they return 0.
+
+Special care should be taken when writing `autolink`, `link` and `image`
+callbacks, because the arguments `link`, `title` and `alt` are unsanitized
+data taken directly from the input file. It is up to the renderer to escape
+whatever needs escaping to prevent bad things from happening. To help you
+writing renderers, the function `lus_attr_escape()` escapes all problematic
+characters in (X)HTML: `'<'`, `'>'`, `'&'` and `'"'`.
+
+The `normal_text` callback should also perform whatever escape is needed to
+have the output looking like the input data.
 
 
 ### Renderer examples
