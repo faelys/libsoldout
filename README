@@ -292,4 +292,170 @@ Follows an example use of all of them:
 Internals
 ---------
 
-TODO
+Here I  explain the structure of `markdown.c`, and how this parser works. I
+use a logical ordre, which is roughly chronological, which means going
+roughly from the bottom of the file to the top.
+
+
+### markdown()
+
+The markdown function is divded into four parts: setup of the `struct
+render`, first pass on the input, actual parsing, and clean-up.
+
+#### render structure
+
+A `struct render` is passed around most of the functions, and it contains
+every information specific about the render.
+
+`make` is a copy of the `struct mkd_renderer` given to `markdown()`. The
+rendering callbacks are actually called from there.
+
+`refs` is a dynamic sorted array of link references (`struct link_ref`). It
+is filled from the input file during the first pass. A link reference is a
+structure of three buffers, `id`, `link` and `title`, whose functions are
+straightforward.
+
+`work` is a dynamic array of working buffers. Short-live working buffer are
+needed throughout the parser, and doing a lot of `malloc()` and `free()` is
+quite inefficient. Instead, when a working buffer is allocated, it is kept
+in this array to be rused next time a working buffer is needed.
+
+`active_char` is a C array of function pointeurs, used for span-level
+parsing: a null pointer is affecter to all inactive characters, and a
+specialized callback is stored for active characters. This initialization
+is the bulk of the first part, because characters should only be marked
+active when the rendering callback pointer is non-null.
+
+#### First pass on the input
+
+During the first pass on the input, newlines are normalized and reference
+lines taken out of the input, and stored into `rndr.refs`.
+
+It makes use of the helpfer function `is_ref()`, which parses the given
+line, checking whether it matches the reference syntax. Offsets of the
+reference components are kept while progressing in the line, and on the
+first syntax error 0 is returned and the line is considered as an input
+line.
+
+When all the tests are passed, a new `struct link_ref` is created and
+sorted into `rndr.refs`.
+
+#### Second pass
+
+`markdown()` does not do much here, the result of the first pass is fed to
+`parse_block()` which fills the output buffer `ob`.
+
+#### Clean-up
+
+References allocated during the first pass, and working buffers allocated
+during the second pass are freed there, before returning.
+
+
+### Block-level parsing
+
+The core of block-level parsing is the function `parse_block()`, which
+runs over the whole input (on the first call, the input is the output on
+the first pass, but `parse_block()` can be called recursively for blocks
+inside blocls, e.g. for blockquotes).
+
+The kind of block at the beginning of the input is determined using the
+`prefix_*` functions, then the correct `parse_<block>` function is called
+for the current block. All specialized `parse_<block>` functions returns a
+`size_t` which is the size of the current blocks. This lets
+`parse_block()` know where to start looking for the following block.
+
+Some blocks are easy to handle, for example blocks of code: the
+`parse_blockcode()` functions only scans the input, accumulating lines in a
+working buffer after stripping the blockcode prefix, and stopping at the
+first non-empty non-blockcode-prefixed line. It then calls the rendering
+function for block codes and returns.
+
+Other blocks are more complicated, like paragraphs who can actually be
+setxt-style headers, or list items, which require a special subparse to
+follow Markdown rules where sublist creation is more laxist than list
+creation.
+
+Most block functions call `parse_inline()` for span-level parsing, before
+handing the result to the block renderer callback.
+
+#### HTML block parsing
+
+Of interest is the `parse_htmlblock()` function: according to Markdown
+webpage, HTML blocks must be delimited by unindented block-level tags,
+whith the opening tag being preceeded by a blank line, and the closing tag
+being followed by a blank line.
+
+When looking at the reference implementation, `Markdown.pl`, it appeared
+that when this doesn't find a match, a more laxist syntax is tried, where
+the closing tag can be indented,, it only has to be at the end of line and
+followed by a blank line.
+
+But when looking at the test suite, it appeared that a single line
+`<div>foo</div>` surrounded by blank lines should be recorgnized as a
+block, regardless of the "matching" unindented closing tag at the end of
+the document. This meant that only the laxist approach should be used.
+
+This why the first pass is commented with a `#if 0`. If you want a strict
+HTML block parsing, as described on the webpage, you should instead comment
+the second pass. Keeping both first and second passes yields the same
+behaviour as `Markdown.pl` v1.0.1.
+
+I have to admin I do not really care that much about these differences, as
+I do not intend to use personnally any inline HTML, because I will either
+prase unsafe input, then inline HTML is too dangerous, or my own input,
+but I use Markdown when I'm not confident in my HTML correctness, so it
+would be useless to include HTML in my input. However I am aware this
+feature can matter for some people, and any patch or suggestion to "fix"
+this behaviour will be welcome.
+
+
+### Span-level parsing
+
+The core of span-level parising is the function `parse_inline()`, which is
+pretty different from `parse_block()`. It is based around the
+`active_char[]` vector table in the render structure.
+
+The main loop is composed of two parts : first the next active character is
+looked for. The string of inactive characters is directly handed over to
+`normal_text` rendering callback.
+
+When a character is active, its corresponding entry in the `active_char[]`
+is a pointer to one of the `char_*`functions. Most of these functions do a
+pretty straightforward work in handling their role.
+
+The most complicated of these functions is `char_link`, which responds to
+`'['`. This is because of the many possibilities offered by markdown to use
+this character : it can either be a part of a link or an image, and then it
+can be inline or reference style or a shortcut reference style.
+
+Emphasis is another interesting piece of code, in that when encountering an
+emphasis character, it first looks whether it is single or double or timple
+emphasis, an then goes forward looking for a match.
+
+
+### Utility functions
+
+Throughout the parsing the need of a working buffer frequently arise. A
+naive approach is to allocate a working buffer each time one is needed, and
+release it afterwards. However it leads to a lot of allocations,
+deallocations and reallocations (when the buffer grows), which costs a lot
+of time.
+
+So I added a `work` dynamic array pointer, which a special meaning to the
+`size` and `asize` members: in this array, The `size` first members are
+active working buffers that are still in use, and the remaining members up
+to `asize` are allocated but no longer used working buffers.
+
+When a function needs a working buffer, it firs compare `size` to `asize`.
+When they are equal, it means there is no available working buffer, and a
+new one is created and appended (`push`ed) to the array. Otherwise it
+increases `size` and takes the already-allocated buffer as its working
+buffer, resetting its size.
+
+When the working buffer is no longer needed, the `size` of the array is
+just decreased, meaning the buffer is still allocated but ready to be taken
+by the next function in need.
+
+When the parsing is over, every working buffer should be marked as ready to
+be reused, hence the assertion of `size` being zero in `markdown()`. The
+buffers in the array are finally freed.
