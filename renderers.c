@@ -69,7 +69,7 @@ static void
 rndr_blockcode(struct buf *ob, struct buf *text, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<pre><code>");
-	if (text) bufput(ob, text->data, text->size);
+	if (text) lus_attr_escape(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code></pre>\n"); }
 
 static void
@@ -82,7 +82,7 @@ rndr_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 static int
 rndr_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "<code>");
-	if (text) bufput(ob, text->data, text->size);
+	if (text) lus_attr_escape(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code>");
 	return 1; }
 

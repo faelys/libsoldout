@@ -455,7 +455,6 @@ static size_t
 char_codespan(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
 	size_t end, nb = 0, i, f_begin, f_end;
-	struct buf *work = 0;
 
 	/* counting the number of backticks in the delimiter */
 	while (nb < size && data[nb] == '`') nb += 1;
@@ -477,16 +476,9 @@ char_codespan(struct buf *ob, struct render *rndr,
 
 	/* real code span */
 	if (f_begin < f_end) {
-		if (rndr->work.size < rndr->work.asize) {
-			work = rndr->work.item[rndr->work.size ++];
-			work->size = 0; }
-		else {
-			work = bufnew(WORK_UNIT);
-			parr_push(&rndr->work, work); }
-		html_escape(work, data + f_begin, f_end - f_begin);
-		if (!rndr->make.codespan(ob, work, rndr->make.opaque))
-			end = 0;
-		rndr->work.size -= 1; }
+		struct buf work = { data + f_begin, f_end - f_begin, 0, 0, 0 };
+		if (!rndr->make.codespan(ob, &work, rndr->make.opaque))
+			end = 0; }
 	else {
 		if (!rndr->make.codespan(ob, 0, rndr->make.opaque))
 			end = 0; }
@@ -1015,7 +1007,7 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 				escaping entities */
 			if (is_empty(data + beg, end - beg))
 				bufputc(work, '\n');
-			else html_escape(work, data + beg, end - beg); }
+			else bufput(work, data + beg, end - beg); }
 		beg = end; }
 
 	while (work->size && work->data[work->size - 1] == '\n')
