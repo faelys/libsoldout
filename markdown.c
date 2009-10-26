@@ -20,7 +20,7 @@
 
 #include "array.h"
 
-#include <stdio.h> /* only used for debug output */
+#include <assert.h>
 #include <string.h>
 #include <strings.h> /* for strncasecmp */
 
@@ -1492,22 +1492,6 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	/* second pass: actual rendering */
 	parse_block(ob, &rndr, text->data, text->size);
 
-#if 0
-/* debug: printing the reference list */
-BUFPUTSL(ob, "(refs");
-lr = rndr.refs.base;
-for (i = 0; i < rndr.refs.size; i += 1) {
-	BUFPUTSL(ob, "\n\t(\"");
-	bufput(ob, lr[i].id->data, lr[i].id->size);
-	BUFPUTSL(ob, "\" \"");
-	bufput(ob, lr[i].link->data, lr[i].link->size);
-	if (lr[i].title) {
-		BUFPUTSL(ob, "\" \"");
-		bufput(ob, lr[i].title->data, lr[i].title->size); }
-	BUFPUTSL(ob, "\")"); }
-BUFPUTSL(ob, ")\n");
-#endif
-
 	/* clean-up */
 	bufrelease(text);
 	lr = rndr.refs.base;
@@ -1516,8 +1500,7 @@ BUFPUTSL(ob, ")\n");
 		bufrelease(lr[i].link);
 		bufrelease(lr[i].title); }
 	arr_free(&rndr.refs);
-if (rndr.work.size)
-fprintf(stderr, "Warning: %i working buffers unfreed\n", rndr.work.size);
+	assert(rndr.work.size == 0);
 	for (i = 0; i < rndr.work.asize; i += 1)
 		bufrelease(rndr.work.item[i]);
 	parr_free(&rndr.work); }
