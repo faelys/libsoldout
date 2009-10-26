@@ -104,18 +104,6 @@ static struct html_tag block_tags[] = {
  * STATIC HELPER FUNCTIONS *
  ***************************/
 
-/* attr_escape • copy data into a buffer, escaping '"', '<' '&' and '>' */
-static void
-attr_escape(struct buf *ob, char *data, size_t size) {
-	size_t i;
-	for (i = 0; i < size; i += 1)
-		if (data[i] == '&') BUFPUTSL(ob, "&amp;");
-		else if (data[i] == '<') BUFPUTSL(ob, "&lt;");
-		else if (data[i] == '>') BUFPUTSL(ob, "&gt;");
-		else if (data[i] == '"') BUFPUTSL(ob, "&quot;");
-		else bufputc(ob, data[i]); }
-
-
 /* html_escape • copy data into a buffer, escaping '<' '&' and '>' */
 static void
 html_escape(struct buf *ob, char *data, size_t size) {
@@ -551,17 +539,10 @@ char_langle_tag(struct buf *ob, struct render *rndr,
 	int ret = 0;
 	if (end) {
 		if (rndr->make.autolink && altype != MKDA_NOT_AUTOLINK) {
-			struct buf *wk = 0;
-			if (rndr->work.size < rndr->work.asize) {
-				wk = rndr->work.item[rndr->work.size ++];
-				wk->size = 0; }
-			else {
-				wk = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, wk); }
-			attr_escape(wk, data + 1, end - 2);
-			ret = rndr->make.autolink(ob, wk, altype,
-							rndr->make.opaque);
-			rndr->work.size -= 1; }
+			work.data = data + 1;
+			work.size = end - 2;
+			ret = rndr->make.autolink(ob, &work, altype,
+							rndr->make.opaque); }
 		else if (rndr->make.raw_html_tag)
 			ret = rndr->make.raw_html_tag(ob, &work,
 							rndr->make.opaque); }
@@ -663,7 +644,7 @@ char_link(struct buf *ob, struct render *rndr,
 			else {
 				link = bufnew(WORK_UNIT);
 				parr_push(&rndr->work, link); }
-			attr_escape(link, data + link_b, link_e - link_b); }
+			bufput(link, data + link_b, link_e - link_b); }
 		if (title_e > title_b) {
 			if (rndr->work.size < rndr->work.asize) {
 				title = rndr->work.item[rndr->work.size ++];
@@ -671,7 +652,7 @@ char_link(struct buf *ob, struct render *rndr,
 			else {
 				title = bufnew(WORK_UNIT);
 				parr_push(&rndr->work, title); }
-			attr_escape(title, data + title_b, title_e - title_b);}
+			bufput(title, data + title_b, title_e - title_b);}
 
 		i += 1; }
 
@@ -764,7 +745,7 @@ char_link(struct buf *ob, struct render *rndr,
 		else {
 			content = bufnew(WORK_UNIT);
 			parr_push(&rndr->work, content); }
-		if (is_img) attr_escape(content, data + 1, txt_e - 1);
+		if (is_img) bufput(content, data + 1, txt_e - 1);
 		else parse_inline(content, rndr, data + 1, txt_e - 1); }
 
 	/* calling the relevant rendering function */
@@ -1455,18 +1436,15 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	id.size = id_end - id_offset;
 	n = arr_sorted_find_i(refs, &id, cmp_link_ref);
 	if (arr_insert(refs, 1, n) && (lr = arr_item(refs, n)) != 0) {
-		struct buf *work = bufnew(WORK_UNIT);
 		lr->id = bufnew(id_end - id_offset);
 		bufput(lr->id, data + id_offset, id_end - id_offset);
-		attr_escape(work, data + link_offset, link_end - link_offset);
-		lr->link = bufdup(work, 1);
+		lr->link = bufnew(link_end - link_offset);
+		bufput(lr->link, data + link_offset, link_end - link_offset);
 		if (title_end > title_offset) {
-			work->size = 0;
-			attr_escape(work, data + title_offset,
-						title_end - title_offset);
-			lr->title = bufdup(work, 1); }
-		else lr->title = 0;
-		bufrelease(work); }
+			lr->title = bufnew(title_end - title_offset);
+			bufput(lr->title, data + title_offset,
+						title_end - title_offset); }
+		else lr->title = 0; }
 	return 1; }
 
 

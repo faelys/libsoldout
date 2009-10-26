@@ -21,6 +21,21 @@
 
 #include "markdown.h"
 
+
+/*****************************
+ * EXPORTED HELPER FUNCTIONS *
+ *****************************/
+
+/* lus_attr_escape • copy the buffer entity-escaping '<', '>', '&' and '"' */
+void
+lus_attr_escape(struct buf *ob, char *src, size_t size);
+
+
+
+/***********************
+ * RENDERER STRUCTURES *
+ ***********************/
+
 /* original markdown renderers */
 extern const struct mkd_renderer mkd_html;  /* HTML 4 renderer */
 extern const struct mkd_renderer mkd_xhtml; /* XHTML 1.0 renderer */
