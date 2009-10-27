@@ -94,13 +94,6 @@ rndr_double_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
 	BUFPUTSL(ob, "</strong>");
 	return 1; }
 
-static void
-rndr_entity(struct buf *ob, struct buf *entity, void *opaque) {
-	/* called with "&" when matching something that isn't an entity */
-	if (!entity || entity->size < 1)
-		BUFPUTSL(ob, "&amp;");
-	else bufput(ob, entity->data, entity->size); }
-
 static int
 rndr_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
 	if (!text || !text->size) return 0;
@@ -235,7 +228,7 @@ const struct mkd_renderer mkd_html = {
 	rndr_raw_inline,
 	rndr_triple_emphasis,
 
-	rndr_entity,
+	NULL,
 	rndr_normal_text,
 
 	"*_",
@@ -294,7 +287,7 @@ const struct mkd_renderer mkd_xhtml = {
 	rndr_raw_inline,
 	rndr_triple_emphasis,
 
-	rndr_entity,
+	NULL,
 	rndr_normal_text,
 
 	"*_",
@@ -434,7 +427,7 @@ const struct mkd_renderer discount_html = {
 	rndr_raw_inline,
 	rndr_triple_emphasis,
 
-	rndr_entity,
+	NULL,
 	rndr_normal_text,
 
 	"*_",
@@ -459,7 +452,7 @@ const struct mkd_renderer discount_xhtml = {
 	rndr_raw_inline,
 	rndr_triple_emphasis,
 
-	rndr_entity,
+	NULL,
 	rndr_normal_text,
 
 	"*_",
@@ -564,7 +557,7 @@ const struct mkd_renderer nat_html = {
 	rndr_raw_inline,
 	nat_triple_emphasis,
 
-	rndr_entity,
+	NULL,
 	rndr_normal_text,
 
 	"*_-+|",
@@ -589,7 +582,7 @@ const struct mkd_renderer nat_xhtml = {
 	rndr_raw_inline,
 	nat_triple_emphasis,
 
-	rndr_entity,
+	NULL,
 	rndr_normal_text,
 
 	"*_-+|",
