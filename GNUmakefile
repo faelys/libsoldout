@@ -19,7 +19,7 @@ CFLAGS=-c -g -O3 -Wall -Werror
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		markdown
+all:		markdown kilt
 
 .PHONY:		all clean
 
@@ -30,6 +30,9 @@ markdown:	main.o markdown.o array.o buffer.o renderers.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 benchmark:	benchmark.o markdown.o array.o buffer.o renderers.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+kilt:		kilt.o markdown.o array.o buffer.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
