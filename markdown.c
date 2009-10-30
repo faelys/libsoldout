@@ -111,6 +111,14 @@ cmp_link_ref(void *key, void *array_entry) {
 	return bufcasecmp(key, lr->id); }
 
 
+/* cmp_link_ref_sort • comparison function for link_ref qsort */
+static int
+cmp_link_ref_sort(const void *a, const void *b) {
+	const struct link_ref *lra = a;
+	const struct link_ref *lrb = b;
+	return bufcasecmp(lra->id, lrb->id); }
+
+
 /* cmp_html_tag • comparison function for bsearch() (stolen from discount) */
 static int
 cmp_html_tag(const void *a, const void *b) {
@@ -1328,14 +1336,14 @@ parse_block(struct buf *ob, struct render *rndr,
 /* is_ref • returns whether a line is a reference or not */
 static int
 is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
-	int n;
+/*	int n; */
 	size_t i = 0;
 	size_t id_offset, id_end;
 	size_t link_offset, link_end;
 	size_t title_offset, title_end;
 	size_t line_end;
 	struct link_ref *lr;
-	struct buf id = { 0, 0, 0, 0, 0 }; /* volatile buf for id search */
+/*	struct buf id = { 0, 0, 0, 0, 0 }; / * volatile buf for id search */
 
 	/* up to 3 optional leading spaces */
 	if (beg + 3 >= end) return 0;
@@ -1414,19 +1422,16 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	/* a valid ref has been found, filling-in return structures */
 	if (last) *last = line_end;
 	if (!refs) return 1;
-	id.data = data + id_offset;
-	id.size = id_end - id_offset;
-	n = arr_sorted_find_i(refs, &id, cmp_link_ref);
-	if (arr_insert(refs, 1, n) && (lr = arr_item(refs, n)) != 0) {
-		lr->id = bufnew(id_end - id_offset);
-		bufput(lr->id, data + id_offset, id_end - id_offset);
-		lr->link = bufnew(link_end - link_offset);
-		bufput(lr->link, data + link_offset, link_end - link_offset);
-		if (title_end > title_offset) {
-			lr->title = bufnew(title_end - title_offset);
-			bufput(lr->title, data + title_offset,
-						title_end - title_offset); }
-		else lr->title = 0; }
+	lr = arr_item(refs, arr_newitem(refs));
+	lr->id = bufnew(id_end - id_offset);
+	bufput(lr->id, data + id_offset, id_end - id_offset);
+	lr->link = bufnew(link_end - link_offset);
+	bufput(lr->link, data + link_offset, link_end - link_offset);
+	if (title_end > title_offset) {
+		lr->title = bufnew(title_end - title_offset);
+		bufput(lr->title, data + title_offset,
+					title_end - title_offset); }
+	else lr->title = 0;
 	return 1; }
 
 
@@ -1484,6 +1489,11 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 					bufputc(text, '\n');
 				end += 1; }
 			beg = end; }
+
+	/* sorting the reference array */
+	if (rndr.refs.size)
+		qsort(rndr.refs.base, rndr.refs.size, rndr.refs.unit,
+					cmp_link_ref_sort);
 
 	/* adding a final newline if not already present */
 	if (!text->size) return;
