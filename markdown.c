@@ -106,9 +106,9 @@ static struct html_tag block_tags[] = {
 
 /* cmp_link_ref • comparison function for link_ref sorted arrays */
 static int
-cmp_link_ref(void *array_entry, void *key) {
+cmp_link_ref(void *key, void *array_entry) {
 	struct link_ref *lr = array_entry;
-	return bufcasecmp(lr->id, key); }
+	return bufcasecmp(key, lr->id); }
 
 
 /* cmp_html_tag • comparison function for bsearch() (stolen from discount) */

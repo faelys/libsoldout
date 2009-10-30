@@ -42,7 +42,7 @@ struct parray {
 
 
 /* array_cmp_fn • comparison functions for sorted arrays */
-typedef int (*array_cmp_fn)(void *array_entry, void *key);
+typedef int (*array_cmp_fn)(void *key, void *array_entry);
 
 
 
@@ -83,6 +83,7 @@ void
 arr_remove(struct array *, int);
 
 /* arr_sorted_find • O(log n) search in a sorted array, returning entry */
+/* equivalent to bsearch(key, arr->base, arr->size, arr->unit, cmp) */
 void *
 arr_sorted_find(struct array *, void *key, array_cmp_fn cmp);
 

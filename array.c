@@ -142,10 +142,10 @@ arr_sorted_find(struct array *arr, void *key, array_cmp_fn cmp) {
 	ma = arr->size;
 	while (mi < ma - 1) {
 		cu = mi + (ma - mi) / 2;
-		ret = cmp(ptr + cu * arr->unit, key);
+		ret = cmp(key, ptr + cu * arr->unit);
 		if (ret == 0) return ptr + cu * arr->unit;
-		else if (ret < 0) mi = cu;
-		else /* if (ret > 0) */ ma = cu; }
+		else if (ret < 0) ma = cu;
+		else /* if (ret > 0) */ mi = cu; }
 	return 0; }
 
 
@@ -159,14 +159,14 @@ arr_sorted_find_i(struct array *arr, void *key, array_cmp_fn cmp) {
 	ma = arr->size;
 	while (mi < ma - 1) {
 		cu = mi + (ma - mi) / 2;
-		ret = cmp(ptr + cu * arr->unit, key);
+		ret = cmp(key, ptr + cu * arr->unit);
 		if (ret == 0) {
 			while (cu < arr->size && ret == 0) {
 				cu += 1;
-				ret = cmp(ptr + cu * arr->unit, key); }
+				ret = cmp(key, ptr + cu * arr->unit); }
 			return cu; }
-		else if (ret < 0) mi = cu;
-		else /* if (ret > 0) */ ma = cu; }
+		else if (ret < 0) ma = cu;
+		else /* if (ret > 0) */ mi = cu; }
 	return ma; }
 
 
@@ -264,10 +264,10 @@ parr_sorted_find(struct parray *arr, void *key, array_cmp_fn cmp) {
 	ma = arr->size;
 	while (mi < ma - 1) {
 		cu = mi + (ma - mi) / 2;
-		ret = cmp(arr->item[cu], key);
+		ret = cmp(key, arr->item[cu]);
 		if (ret == 0) return arr->item[cu];
-		else if (ret < 0) mi = cu;
-		else /* if (ret > 0) */ ma = cu; }
+		else if (ret < 0) ma = cu;
+		else /* if (ret > 0) */ mi = cu; }
 	return 0; }
 
 
@@ -280,14 +280,14 @@ parr_sorted_find_i(struct parray *arr, void *key, array_cmp_fn cmp) {
 	ma = arr->size;
 	while (mi < ma - 1) {
 		cu = mi + (ma - mi) / 2;
-		ret = cmp(arr->item[cu], key);
+		ret = cmp(key, arr->item[cu]);
 		if (ret == 0) {
 			while (cu < arr->size && ret == 0) {
 				cu += 1;
-				ret = cmp(arr->item[cu], key); }
+				ret = cmp(key, arr->item[cu]); }
 			return cu; }
-		else if (ret < 0) mi = cu;
-		else /* if (ret > 0) */ ma = cu; }
+		else if (ret < 0) ma = cu;
+		else /* if (ret > 0) */ mi = cu; }
 	return ma; }
 
 
