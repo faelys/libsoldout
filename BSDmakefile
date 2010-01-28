@@ -16,29 +16,42 @@
 
 DEPDIR=depends
 ALLDEPS=$(DEPDIR)/all
-CFLAGS=-c -g -O3 -Wall -Werror
+CFLAGS=-c -g -O3 -Wall -Werror -fPIC
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		lace kilt
+all:		libupskirt.so lace kilt
 
 .PHONY:		all clean
 
 
-# Main project links
+# libraries
 
-lace:		lace.o markdown.o array.o buffer.o renderers.o
+libupskirt.so:	libupskirt.so.1
+	ln -s $(.ALLSRC) $(.TARGET)
+
+libupskirt.so.1:	markdown.o array.o buffer.o renderers.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname=$(.TARGET) \
+		$(.ALLSRC) -o $(.TARGET)
+
+
+# executables
+
+lace:		lace.o libupskirt.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
-benchmark:	benchmark.o markdown.o array.o buffer.o renderers.o
+kilt:		kilt.o libupskirt.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
-kilt:		kilt.o markdown.o array.o buffer.o
+
+# Housekeeping
+
+benchmark:	benchmark.o libupskirt.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
 clean:
 	rm -f *.o
-	rm -f lace kilt benchmark
+	rm -f libupskirt.so libupskirt.so.1 lace kilt benchmark
 	rm -rf $(DEPDIR)
 
 

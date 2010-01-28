@@ -19,25 +19,37 @@ CFLAGS=-c -g -O3 -Wall -Werror
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		lace kilt
+all:		libupskirt.so lace kilt
 
 .PHONY:		all clean
 
 
-# Main project links
+# libraries
 
-lace:		lace.o markdown.o array.o buffer.o renderers.o
+libupskirt.so:	libupskirt.so.1
+	ln -s $^ $@
+
+libupskirt.so.1: markdown.o array.o buffer.o renderers.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+
+
+# executables
+
+lace:		lace.o libupskirt.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
-benchmark:	benchmark.o markdown.o array.o buffer.o renderers.o
+kilt:		kilt.o libupskirt.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
-kilt:		kilt.o markdown.o array.o buffer.o
+
+# housekeeping
+
+benchmark:	benchmark.o libupskirt.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f *.o
-	rm -f lace kilt benchmark
+	rm -f libupskirt.so libupskirt.so.1 lace kilt benchmark
 	rm -rf $(DEPDIR)
 
 
