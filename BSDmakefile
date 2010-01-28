@@ -20,14 +20,14 @@ CFLAGS=-c -g -O3 -Wall -Werror
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		markdown kilt
+all:		lace kilt
 
 .PHONY:		all clean
 
 
 # Main project links
 
-markdown:	main.o markdown.o array.o buffer.o renderers.o
+lace:		lace.o markdown.o array.o buffer.o renderers.o
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
 benchmark:	benchmark.o markdown.o array.o buffer.o renderers.o
@@ -38,7 +38,7 @@ kilt:		kilt.o markdown.o array.o buffer.o
 
 clean:
 	rm -f *.o
-	rm -f markdown
+	rm -f lace kilt benchmark
 	rm -rf $(DEPDIR)
 
 
