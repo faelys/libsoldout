@@ -148,9 +148,9 @@ data. I think the struct declaration is pretty obvious:
 		int (*triple_emphasis)(struct buf *ob, struct buf *text,
 							char c, void *opaque);
 
-	>·······/* low level callbacks - NULL copies input directly into the output */
-	>·······void (*entity)(struct buf *ob, struct buf *entity, void *opaque);
-	>·······void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
+		/* low level callbacks - NULL copies input directly into the output */
+		void (*entity)(struct buf *ob, struct buf *entity, void *opaque);
+		void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
 
 		/* renderer data */
 		const char *emph_chars; /* chars that trigger emphasis rendering */
@@ -192,7 +192,7 @@ as dangerous), just put a null pointer in `rndr.link` and `rndr.image` and
 the bracketed stuff will be present as-is in the output. While a null
 pointer in `header` will remove all header-looking blocks. If you want an
 otherwise standard markdown-to-XHTML conversion, you can take the example
-`mkd_xhtml` struct, copy it into yoru own `struct mkd_renderer` and then
+`mkd_xhtml` struct, copy it into your own `struct mkd_renderer` and then
 assign NULL to `link` and `image` members.
 
 Moreover, span-level callbacks return an integer, which tells whether the
@@ -263,7 +263,7 @@ markdown.
 Here is a list of these extensions :
 
  - id attribute for headers, using the syntax _id_#_Header text_
- - class attribute for paragraphs, by butting class name(s) between
+ - class attribute for paragraphs, by putting class name(s) between
    parenthesis at the very beginning of the paragraph
  - `<ins>` and `<del>` spans, using respectively `++` and `--` as
    delimiters (with emphasis-like restrictions, i.e. an opening delimiter
@@ -293,7 +293,7 @@ Internals
 ---------
 
 Here I  explain the structure of `markdown.c`, and how this parser works. I
-use a logical ordre, which is roughly chronological, which means going
+use a logical order, which is roughly chronological, which means going
 roughly from the bottom of the file to the top.
 
 
@@ -315,7 +315,7 @@ is filled from the input file during the first pass. A link reference is a
 structure of three buffers, `id`, `link` and `title`, whose functions are
 straightforward.
 
-`work` is a dynamic array of working buffers. Short-live working buffer are
+`work` is a dynamic array of working buffers. Short-lived working buffers are
 needed throughout the parser, and doing a lot of `malloc()` and `free()` is
 quite inefficient. Instead, when a working buffer is allocated, it is kept
 in this array to be rused next time a working buffer is needed.
@@ -331,7 +331,7 @@ active when the rendering callback pointer is non-null.
 During the first pass on the input, newlines are normalized and reference
 lines taken out of the input, and stored into `rndr.refs`.
 
-It makes use of the helpfer function `is_ref()`, which parses the given
+It makes use of the helper function `is_ref()`, which parses the given
 line, checking whether it matches the reference syntax. Offsets of the
 reference components are kept while progressing in the line, and on the
 first syntax error 0 is returned and the line is considered as an input
@@ -356,13 +356,13 @@ during the second pass are freed there, before returning.
 The core of block-level parsing is the function `parse_block()`, which
 runs over the whole input (on the first call, the input is the output on
 the first pass, but `parse_block()` can be called recursively for blocks
-inside blocls, e.g. for blockquotes).
+inside blocks, e.g. for blockquotes).
 
 The kind of block at the beginning of the input is determined using the
 `prefix_*` functions, then the correct `parse_<block>` function is called
 for the current block. All specialized `parse_<block>` functions returns a
-`size_t` which is the size of the current blocks. This lets
-`parse_block()` know where to start looking for the following block.
+`size_t` which is the size of the current block. This lets `parse_block()`
+know where to start looking for the following block.
 
 Some blocks are easy to handle, for example blocks of code: the
 `parse_blockcode()` functions only scans the input, accumulating lines in a
@@ -400,9 +400,9 @@ HTML block parsing, as described on the webpage, you should instead comment
 the second pass. Keeping both first and second passes yields the same
 behaviour as `Markdown.pl` v1.0.1.
 
-I have to admin I do not really care that much about these differences, as
+I have to admit I do not really care that much about these differences, as
 I do not intend to use personnally any inline HTML, because I will either
-prase unsafe input, then inline HTML is too dangerous, or my own input,
+parse unsafe input, then inline HTML is too dangerous, or my own input,
 but I use Markdown when I'm not confident in my HTML correctness, so it
 would be useless to include HTML in my input. However I am aware this
 feature can matter for some people, and any patch or suggestion to "fix"
@@ -411,7 +411,7 @@ this behaviour will be welcome.
 
 ### Span-level parsing
 
-The core of span-level parising is the function `parse_inline()`, which is
+The core of span-level parsing is the function `parse_inline()`, which is
 pretty different from `parse_block()`. It is based around the
 `active_char[]` vector table in the render structure.
 
