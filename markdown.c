@@ -447,7 +447,7 @@ char_emphasis(struct buf *ob, struct render *rndr,
 static size_t
 char_linebreak(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
-	if (offset < 2 || data[-1] != ' ' || data[-2] != 2) return 0;
+	if (offset < 2 || data[-1] != ' ' || data[-2] != ' ') return 0;
 	/* removing the last space from ob and rendering */
 	if (ob->size && ob->data[ob->size - 1] == ' ') ob->size -= 1;
 	return rndr->make.linebreak(ob, rndr->make.opaque) ? 1 : 0; }
