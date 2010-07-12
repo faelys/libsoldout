@@ -396,6 +396,7 @@ discount_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "<div class=\"");
 	bufput(ob, text->data + 4, i - 4);
 	BUFPUTSL(ob, "\"><p>");
+	i += 1;
 	if (i + 4 >= text->size && !strncasecmp(text->data + i, "</p>", 4)) {
 		size_t old_i = i;
 		i += 4;
