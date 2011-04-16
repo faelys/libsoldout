@@ -161,6 +161,7 @@ struct mkd_renderer to_man = {
 	man_normal_text,
 
 	/* renderer data */
+	64,
 	"*_",
 	NULL };
 

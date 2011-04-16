@@ -69,6 +69,7 @@ struct mkd_renderer {
 	void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
 
 	/* renderer data */
+	int max_work_stack; /* prevent arbitrary deep recursion, cf README */
 	const char *emph_chars; /* chars that trigger emphasis rendering */
 	void *opaque; /* opaque data send to every rendering callback */
 };

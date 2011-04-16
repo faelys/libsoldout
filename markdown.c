@@ -229,6 +229,10 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 	char_trigger action = 0;
 	struct buf work = { 0, 0, 0, 0, 0 };
 
+	if (rndr->work.size > rndr->make.max_work_stack) {
+		if (size) bufput(ob, data, size);
+		return; }
+
 	while (i < size) {
 		/* copying inactive chars into the output */
 		while (end < size
@@ -1306,6 +1310,11 @@ parse_block(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end, i;
 	char *txt_data;
+
+	if (rndr->work.size > rndr->make.max_work_stack) {
+		if (size) bufput(ob, data, size);
+		return; }
+
 	beg = 0;
 	while (beg < size) {
 		txt_data = data + beg;
@@ -1458,6 +1467,8 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	/* filling the render structure */
 	if (!rndrer) return;
 	rndr.make = *rndrer;
+	if (rndr.make.max_work_stack < 1)
+		rndr.make.max_work_stack = 1;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
 	parr_init(&rndr.work);
 	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;

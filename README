@@ -153,6 +153,7 @@ data. I think the struct declaration is pretty obvious:
 		void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
 
 		/* renderer data */
+		int max_work_stack; /* prevent arbitrary deep recursion, */
 		const char *emph_chars; /* chars that trigger emphasis rendering */
 		void *opaque; /* opaque data send to every rendering callback */
 	};
@@ -431,6 +432,61 @@ can be inline or reference style or a shortcut reference style.
 Emphasis is another interesting piece of code, in that when encountering an
 emphasis character, it first looks whether it is single or double or timple
 emphasis, an then goes forward looking for a match.
+
+
+### Proof that recursion depth is bount by `max_work_stack`
+
+The core of the code here is that when entering the functions
+`parse_inline()` and `parse_block()`, if the current size of the working
+buffer stack (`rndr->work`) is above `max_work_stack`, the parsing is
+short-circuited and the input is appended as-is.
+
+Let's prove now that this actually works, i.e. that it does put an upper
+bound on the nested function call depth.
+
+**Step 1**: there is no function calling itself directly in `markdown.c`.
+This is quite easy to check, though a bit tedious. This proves that a stack
+overflow involves a recursion cycle of a least two functions.
+
+**Step 2**: most of the functions in `markdown.c` are declared by their
+definition, which means that these functions can only call functions
+appearing before them in the source file. This provides a strict hierarchy,
+which prevents any multiple-function recursion cycle. So only exceptions to
+the hierarchy are left to check.
+
+**Step 3**: there are only 3 functions that break the above-mentioned
+hierarchy:
+
+  * `markdown()`, which is declared through the inclusion of `markdown.h`
+at the very beginning of `markdown.c`. However an easy text search shows
+that it's actually never called here, which obviously prevents it from
+being part of a recursion cycle.
+  * `parse_block()`, which is declared at the beginning of the block-level
+section, but defined at the end.
+  * `parse_inline()`, which uses functions pointer to dispatch active
+character handling towards `char_*` functions below.
+
+So at this point I have proved that any recursion cycle *always* involves
+`parse_block()` or `parse_inline()`. So checking a depth-indicator only in
+these functions is enough to prevent recursion cycles.
+
+**Step 4**: `rndr->work.size` is a good depth-indicator, because all calls
+to `parse_block()` or `parse_inline()` happen after at least one working
+buffer allocation. This is again a bit tedious to check:
+
+   * `parse_block()` is called in `markdown()`, which is irrelevant, and in
+`parse_blockquote()` and `parse_listitem()`, which allocate respectively
+one and two working buffers at the very beginning of the function;
+   * `parse_inline()` is called in `parse_emph1()`, `parse_emph2()`,
+`parse_emph3()`, `char_link()`, `parse_paragraph()` (twice), and each time
+it's called right after allocating a new working buffer; and in
+`parse_listitem()` which allocates two working buffers at the very
+beginning of the functions.
+
+Therefore, `rndr->work.size` will always increase between calls of
+`parse_block()` or `parse_inline()`, which in turns proves that putting an
+upper bound on `rndr->work.size` prevents arbitrarily deep recursions, and
+therefore stack overflows when the upper bound is well chosen.
 
 
 ### Utility functions

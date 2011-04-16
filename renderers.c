@@ -231,6 +231,7 @@ const struct mkd_renderer mkd_html = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 
@@ -290,6 +291,7 @@ const struct mkd_renderer mkd_xhtml = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 
@@ -431,6 +433,7 @@ const struct mkd_renderer discount_html = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 const struct mkd_renderer discount_xhtml = {
@@ -456,6 +459,7 @@ const struct mkd_renderer discount_xhtml = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 
@@ -561,6 +565,7 @@ const struct mkd_renderer nat_html = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_-+|",
 	NULL };
 const struct mkd_renderer nat_xhtml = {
@@ -586,5 +591,6 @@ const struct mkd_renderer nat_xhtml = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_-+|",
 	NULL };
