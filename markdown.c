@@ -925,7 +925,7 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 		if (is_empty(data + i, size - i)
 		|| (level = is_headerline(data + i, size - i)) != 0)
 			break;
-		if (data[i] == '#'
+		if ((i && data[i] == '#')
 		|| is_hrule(data + i, size - i)) {
 			end = i;
 			break; }
@@ -1157,14 +1157,21 @@ parse_atxheader(struct buf *ob, struct render *rndr,
 	struct buf work = { data, 0, 0, 0, 0 };
 
 	if (!size || data[0] != '#') return 0;
+
 	while (level < size && level < 6 && data[level] == '#') level += 1;
 	for (i = level; i < size && (data[i] == ' ' || data[i] == '\t');
 							i += 1);
 	work.data = data + i;
+
 	for (end = i; end < size && data[end] != '\n'; end += 1);
 	skip = end;
+	if (end <= i)
+		return parse_paragraph(ob, rndr, data, size);
 	while (end && data[end - 1] == '#') end -= 1;
 	while (end && (data[end - 1] == ' ' || data[end - 1] == '\t')) end -= 1;
+	if (end <= i)
+		return parse_paragraph(ob, rndr, data, size);
+
 	work.size = end - i;
 	if (rndr->make.header)
 		rndr->make.header(ob, &work, level, rndr->make.opaque);
