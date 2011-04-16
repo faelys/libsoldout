@@ -209,6 +209,9 @@ html_linebreak(struct buf *ob, void *opaque) {
 
 /* exported renderer structure */
 const struct mkd_renderer mkd_html = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	rndr_blockquote,
 	rndr_raw_block,
@@ -269,6 +272,9 @@ xhtml_linebreak(struct buf *ob, void *opaque) {
 
 /* exported renderer structure */
 const struct mkd_renderer mkd_xhtml = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	rndr_blockquote,
 	rndr_raw_block,
@@ -411,6 +417,9 @@ discount_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 
 /* exported renderer structures */
 const struct mkd_renderer discount_html = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -437,6 +446,9 @@ const struct mkd_renderer discount_html = {
 	"*_",
 	NULL };
 const struct mkd_renderer discount_xhtml = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -543,6 +555,9 @@ nat_paragraph(struct buf *ob, struct buf *text, void *opaque) {
 
 /* exported renderer structures */
 const struct mkd_renderer nat_html = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -569,6 +584,9 @@ const struct mkd_renderer nat_html = {
 	"*_-+|",
 	NULL };
 const struct mkd_renderer nat_xhtml = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,

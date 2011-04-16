@@ -135,6 +135,10 @@ man_normal_text(struct buf *ob, struct buf *text, void *opaque) {
 
 /* renderer structure */
 struct mkd_renderer to_man = {
+	/* document-level callbacks */
+	NULL,
+	NULL,
+
 	/* block-level callbacks */
 	man_blockcode,
 	NULL,

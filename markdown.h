@@ -36,6 +36,10 @@ enum mkd_autolink {
 
 /* mkd_renderer • functions for rendering parsed data */
 struct mkd_renderer {
+	/* document level callbacks */
+	void (*prolog)(struct buf *ob, void *opaque);
+	void (*epilog)(struct buf *ob, void *opaque);
+
 	/* block level callbacks - NULL skips the block */
 	void (*blockcode)(struct buf *ob, struct buf *text, void *opaque);
 	void (*blockquote)(struct buf *ob, struct buf *text, void *opaque);

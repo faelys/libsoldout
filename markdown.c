@@ -1520,7 +1520,11 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 		bufputc(text, '\n');
 
 	/* second pass: actual rendering */
+	if (rndr.make.prolog)
+		rndr.make.prolog(ob, rndr.make.opaque);
 	parse_block(ob, &rndr, text->data, text->size);
+	if (rndr.make.epilog)
+		rndr.make.epilog(ob, rndr.make.opaque);
 
 	/* clean-up */
 	bufrelease(text);
