@@ -104,6 +104,43 @@ static struct html_tag block_tags[] = {
  * STATIC HELPER FUNCTIONS *
  ***************************/
 
+/* build_ref_id • collapse whitespace from input text to make it a ref id */
+static int
+build_ref_id(struct buf *id, const char *data, size_t size) {
+	size_t beg, i;
+
+	/* skip leading whitespace */
+	while (size > 0
+	&& (data[0] == ' ' || data[0] == '\t' || data[0] == '\n')) {
+		data += 1;
+		size -= 1; }
+
+	/* skip trailing whitespace */
+	while (size > 0
+	&& (data[size - 1] == ' ' || data[size - 1] == '\t'
+	 || data[size - 1] == '\n'))
+		size -= 1;
+	if (size == 0) return -1;
+
+	/* making the ref id */
+	i = 0;
+	id->size = 0;
+	while (i < size) {
+		/* copy non-whitespace into the output buffer */
+		beg = i;
+		while (i < size
+		&& !(data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+			i += 1;
+		bufput(id, data + beg, i - beg);
+
+		/* add a single space and skip all consecutive whitespace */
+		if (i < size) bufputc(id, ' ');
+		while (i < size
+		&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+			i += 1; }
+	return 0; }
+
+
 /* cmp_link_ref • comparison function for link_ref sorted arrays */
 static int
 cmp_link_ref(void *key, void *array_entry) {
@@ -554,16 +591,93 @@ char_langle_tag(struct buf *ob, struct render *rndr,
 	else return end; }
 
 
+/* get_link_inline • extract inline-style link and title from parenthesed data*/
+static int
+get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
+	size_t i = 0;
+	size_t link_b, link_e;
+	size_t title_b = 0, title_e = 0;
+
+	link->size = title->size = 0;
+
+	/* skipping initial whitespace */
+	while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	link_b = i;
+
+	/* looking for link end: ' " */
+	while (i < size && data[i] != '\'' && data[i] != '"')
+		i += 1;
+	link_e = i;
+
+	/* looking for title end if present */
+	if (data[i] == '\'' || data[i] == '"') {
+		i += 1;
+		title_b = i;
+
+		/* skipping whitespaces after title */
+		title_e = size - 1;
+		while (title_e > title_b && (data[title_e] == ' ' 
+		|| data[title_e] == '\t' || data[title_e] == '\n'))
+			title_e -= 1;
+
+		/* checking for closing quote presence */
+		if (data[title_e] != '\'' &&  data[title_e] != '"') {
+			title_b = title_e = 0;
+			link_e = i; } }
+
+	/* remove whitespace at the end of the link */
+	while (link_e > link_b
+	&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
+		link_e -= 1;
+
+	/* remove optional angle brackets around the link */
+	if (data[link_b] == '<') link_b += 1;
+	if (data[link_e - 1] == '>') link_e -= 1;
+
+	/* handing back  link and title */
+	link->size = 0;
+	if (link_e > link_b)
+		bufput(link, data + link_b, link_e - link_b);
+	title->size = 0;
+	if (title_e > title_b)
+		bufput(title, data + title_b, title_e - title_b);
+
+	/* this function always succeed */
+	return 0; }
+
+
+/* get_link_ref • extract referenced link and title from id */
+static int
+get_link_ref(struct render *rndr, struct buf *link, struct buf *title,
+				char * data, size_t size) {
+	struct link_ref *lr;
+
+	/* find the link from its id (stored temporarily in link) */
+	link->size = 0;
+	if (build_ref_id(link, data, size) < 0)
+		return -1;
+	lr = arr_sorted_find(&rndr->refs, link, cmp_link_ref);
+	if (!lr) return -1;
+
+	/* fill the output buffers */
+	link->size = 0;
+	if (lr->link)
+		bufput(link, lr->link->data, lr->link->size);
+	title->size = 0;
+	if (lr->title)
+		bufput(title, lr->title->data, lr->title->size);
+	return 0; }
+
+
 /* char_link • '[': parsing a link or an image */
 static size_t
 char_link(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
 	int is_img = (offset && data[-1] == '!'), level;
-	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0;
+	size_t i = 1, txt_e;
 	struct buf *content = 0;
 	struct buf *link = 0;
 	struct buf *title = 0;
-	size_t org_work_size = rndr->work.size;
 	int text_has_nl = 0, ret;
 
 	/* checking whether the correct renderer exists */
@@ -588,157 +702,77 @@ char_link(struct buf *ob, struct render *rndr,
 	&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
 		i += 1;
 
+	/* allocate temporary buffers to store content, link and title */
+	if (rndr->work.size < rndr->work.asize) {
+		content = rndr->work.item[rndr->work.size ++];
+		content->size = 0; }
+	else {
+		content = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, content); }
+	if (rndr->work.size < rndr->work.asize) {
+		link = rndr->work.item[rndr->work.size ++];
+		link->size = 0; }
+	else {
+		link = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, link); }
+	if (rndr->work.size < rndr->work.asize) {
+		title = rndr->work.item[rndr->work.size ++];
+		title->size = 0; }
+	else {
+		title = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, title); }
+
 	/* inline style link */
 	if (i < size && data[i] == '(') {
-		/* skipping initial whitespace */
-		i += 1;
-		while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
-		link_b = i;
+		size_t span_end = i;
+		while (span_end < size && data[span_end] != ')')
+			span_end += 1;
 
-		/* looking for link end: ' " ) */
-		while (i < size
-		&& data[i] != '\'' && data[i] != '"' && data[i] != ')')
-			i += 1;
-		if (i >= size) return 0;
-		link_e = i;
+		if (span_end >= size
+		|| get_link_inline(link, title,
+					data + i+1, span_end - (i+1)) < 0) {
+			rndr->work.size -= 3;
+			return 0; }
 
-		/* looking for title end if present */
-		if (data[i] == '\'' || data[i] == '"') {
-			i += 1;
-			title_b = i;
-			while (i < size && data[i] != ')')
-				i += 1;
-			if (i >= size) return 0;
-
-			/* skipping whitespaces after title */
-			title_e = i - 1;
-			while (title_e > title_b && (data[title_e] == ' ' 
-			|| data[title_e] == '\t' || data[title_e] == '\n'))
-				title_e -= 1;
-
-			/* checking for closing quote presence */
-			if (data[title_e] != '\'' &&  data[title_e] != '"') {
-				title_b = title_e = 0;
-				link_e = i; } }
-
-		/* remove whitespace at the end of the link */
-		while (link_e > link_b
-		&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
-			link_e -= 1;
-
-		/* remove optional angle brackets around the link */
-		if (data[link_b] == '<') link_b += 1;
-		if (data[link_e - 1] == '>') link_e -= 1;
-
-		/* building escaped link and title */
-		if (link_e > link_b) {
-			if (rndr->work.size < rndr->work.asize) {
-				link = rndr->work.item[rndr->work.size ++];
-				link->size = 0; }
-			else {
-				link = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, link); }
-			bufput(link, data + link_b, link_e - link_b); }
-		if (title_e > title_b) {
-			if (rndr->work.size < rndr->work.asize) {
-				title = rndr->work.item[rndr->work.size ++];
-				title->size = 0; }
-			else {
-				title = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, title); }
-			bufput(title, data + title_b, title_e - title_b);}
-
-		i += 1; }
+		i = span_end + 1; }
 
 	/* reference style link */
 	else if (i < size && data[i] == '[') {
-		struct buf id = { 0, 0, 0, 0, 0 };
-		struct link_ref *lr;
+		char *id_data;
+		size_t id_size, id_end = i;
+		while (id_end < size && data[id_end] != ']')
+			id_end += 1;
 
-		/* looking for the id */
-		i += 1;
-		link_b = i;
-		while (i < size && data[i] != ']') i += 1;
-		if (i >= size) return 0;
-		link_e = i;
+		if (id_end >= size) {
+			rndr->work.size -= 3;
+			return 0; }
 
-		/* finding the link_ref */
-		if (link_b == link_e) {
-			if (text_has_nl) {
-				struct buf *b = 0;
-				size_t j;
-				if (rndr->work.size < rndr->work.asize) {
-					b = rndr->work.item[rndr->work.size ++];
-					b->size = 0; }
-				else {
-					b = bufnew(WORK_UNIT);
-					parr_push(&rndr->work, b); }
-				for (j = 1; j < txt_e; j += 1)
-					if (data[j] != '\n')
-						bufputc(b, data[j]);
-					else if (data[j - 1] != ' ')
-						bufputc(b, ' ');
-				id.data = b->data;
-				id.size = b->size; }
-			else {
-				id.data = data + 1;
-				id.size = txt_e - 1; } }
+		if (i + 1 == id_end) {
+			/* implicit id - use the contents */
+			id_data = data + 1;
+			id_size = txt_e - 1; }
 		else {
-			id.data = data + link_b;
-			id.size = link_e - link_b; }
-		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
-		if (!lr) return 0;
+			/* explici id - between brackets */
+			id_data = data + i + 1;
+			id_size = id_end - (i + 1); }
 
-		/* keeping link and title from link_ref */
-		link = lr->link;
-		title = lr->title;
-		i += 1; }
+		if (get_link_ref(rndr, link, title, id_data, id_size) < 0) {
+			rndr->work.size -= 3;
+			return 0; }
+
+		i = id_end + 1; }
 
 	/* shortcut reference style link */
 	else {
-		struct buf id = { 0, 0, 0, 0, 0 };
-		struct link_ref *lr;
-
-		/* crafting the id */
-		if (text_has_nl) {
-			struct buf *b = 0;
-			size_t j;
-			if (rndr->work.size < rndr->work.asize) {
-				b = rndr->work.item[rndr->work.size ++];
-				b->size = 0; }
-			else {
-				b = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, b); }
-			for (j = 1; j < txt_e; j += 1)
-				if (data[j] != '\n')
-					bufputc(b, data[j]);
-				else if (data[j - 1] != ' ')
-					bufputc(b, ' ');
-			id.data = b->data;
-			id.size = b->size; }
-		else {
-			id.data = data + 1;
-			id.size = txt_e - 1; }
-
-		/* finding the link_ref */
-		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
-		if (!lr) return 0;
-
-		/* keeping link and title from link_ref */
-		link = lr->link;
-		title = lr->title;
+		if (get_link_ref(rndr, link, title, data + 1, txt_e - 1) < 0) {
+			rndr->work.size -= 3;
+			return 0; }
 
 		/* rewinding the whitespace */
 		i = txt_e + 1; }
 
 	/* building content: img alt is escaped, link content is parsed */
 	if (txt_e > 1) {
-		if (rndr->work.size < rndr->work.asize) {
-			content = rndr->work.item[rndr->work.size ++];
-			content->size = 0; }
-		else {
-			content = bufnew(WORK_UNIT);
-			parr_push(&rndr->work, content); }
 		if (is_img) bufput(content, data + 1, txt_e - 1);
 		else parse_inline(content, rndr, data + 1, txt_e - 1); }
 
@@ -751,7 +785,7 @@ char_link(struct buf *ob, struct render *rndr,
 	else ret = rndr->make.link(ob, link, title, content, rndr->make.opaque);
 
 	/* cleanup */
-	rndr->work.size = org_work_size;
+	rndr->work.size -= 3;
 	return ret ? i : 0; }
 
 
@@ -1352,14 +1386,13 @@ parse_block(struct buf *ob, struct render *rndr,
 /* is_ref • returns whether a line is a reference or not */
 static int
 is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
-/*	int n; */
 	size_t i = 0;
 	size_t id_offset, id_end;
 	size_t link_offset, link_end;
 	size_t title_offset, title_end;
 	size_t line_end;
 	struct link_ref *lr;
-/*	struct buf id = { 0, 0, 0, 0, 0 }; / * volatile buf for id search */
+	struct buf *id;
 
 	/* up to 3 optional leading spaces */
 	if (beg + 3 >= end) return 0;
@@ -1438,9 +1471,12 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	/* a valid ref has been found, filling-in return structures */
 	if (last) *last = line_end;
 	if (!refs) return 1;
+	id = bufnew(WORK_UNIT);
+	if (build_ref_id(id, data + id_offset, id_end - id_offset) < 0) {
+		bufrelease(id);
+		return 0; }
 	lr = arr_item(refs, arr_newitem(refs));
-	lr->id = bufnew(id_end - id_offset);
-	bufput(lr->id, data + id_offset, id_end - id_offset);
+	lr->id = id;
 	lr->link = bufnew(link_end - link_offset);
 	bufput(lr->link, data + link_offset, link_end - link_offset);
 	if (title_end > title_offset) {
