@@ -884,7 +884,9 @@ prefix_oli(char *data, size_t size) {
 	while (i < size && data[i] >= '0' && data[i] <= '9') i += 1;
 	if (i + 1 >= size || data[i] != '.'
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t')) return 0;
-	return i + 2; }
+	i = i + 2;
+	while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	return i; }
 
 
 /* prefix_uli • returns ordered list item prefix */
@@ -898,7 +900,9 @@ prefix_uli(char *data, size_t size) {
 	|| (data[i] != '*' && data[i] != '+' && data[i] != '-')
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t'))
 		return 0;
-	return i + 2; }
+	i = i + 2;
+	while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	return i; }
 
 
 /* parse_block • parsing of one block, returning next char to parse */
