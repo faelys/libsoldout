@@ -30,6 +30,10 @@
 void
 lus_attr_escape(struct buf *ob, char *src, size_t size);
 
+/* lus_body_escape • copy the buffer entity-escaping '<', '>' and '&' */
+void
+lus_body_escape(struct buf *ob, char *src, size_t size);
+
 
 
 /***********************

@@ -46,6 +46,26 @@ lus_attr_escape(struct buf *ob, char *src, size_t size) {
 		i += 1; } }
 
 
+/* lus_body_escape • copy the buffer entity-escaping '<', '>' and '&' */
+void
+lus_body_escape(struct buf *ob, char *src, size_t size) {
+	size_t  i = 0, org;
+	while (i < size) {
+		/* copying directly unescaped characters */
+		org = i;
+		while (i < size && src[i] != '<' && src[i] != '>'
+		&& src[i] != '&')
+			i += 1;
+		if (i > org) bufput(ob, src + org, i - org);
+
+		/* escaping */
+		if (i >= size) break;
+		else if (src[i] == '<') BUFPUTSL(ob, "&lt;");
+		else if (src[i] == '>') BUFPUTSL(ob, "&gt;");
+		else if (src[i] == '&') BUFPUTSL(ob, "&amp;");
+		i += 1; } }
+
+
 
 /********************
  * GENERIC RENDERER *
@@ -60,8 +80,8 @@ rndr_autolink(struct buf *ob, struct buf *link, enum mkd_autolink type,
 	lus_attr_escape(ob, link->data, link->size);
 	BUFPUTSL(ob, "\">");
 	if (type == MKDA_EXPLICIT_EMAIL && link->size > 7)
-		lus_attr_escape(ob, link->data + 7, link->size - 7);
-	else	lus_attr_escape(ob, link->data, link->size);
+		lus_body_escape(ob, link->data + 7, link->size - 7);
+	else	lus_body_escape(ob, link->data, link->size);
 	BUFPUTSL(ob, "</a>");
 	return 1; }
 
@@ -69,7 +89,7 @@ static void
 rndr_blockcode(struct buf *ob, struct buf *text, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<pre><code>");
-	if (text) lus_attr_escape(ob, text->data, text->size);
+	if (text) lus_body_escape(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code></pre>\n"); }
 
 static void
@@ -82,7 +102,7 @@ rndr_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 static int
 rndr_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "<code>");
-	if (text) lus_attr_escape(ob, text->data, text->size);
+	if (text) lus_body_escape(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code>");
 	return 1; }
 
@@ -140,7 +160,7 @@ rndr_listitem(struct buf *ob, struct buf *text, int flags, void *opaque) {
 
 static void
 rndr_normal_text(struct buf *ob, struct buf *text, void *opaque) {
-	if (text) lus_attr_escape(ob, text->data, text->size); }
+	if (text) lus_body_escape(ob, text->data, text->size); }
 
 static void
 rndr_paragraph(struct buf *ob, struct buf *text, void *opaque) {
