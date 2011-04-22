@@ -985,8 +985,11 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 				work.data += beg;
 				work.size = i - beg; }
 			else work.size = i; }
-		if (rndr->make.header)
-			rndr->make.header(ob, &work, level,rndr->make.opaque);}
+		if (rndr->make.header) {
+			struct buf *span = new_work_buffer(rndr);
+			parse_inline(span, rndr, work.data, work.size);
+			rndr->make.header(ob, span, level,rndr->make.opaque);
+			release_work_buffer(rndr, span); } }
 	return end; }
 
 
@@ -1143,15 +1146,14 @@ static size_t
 parse_atxheader(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	int level = 0;
-	size_t i, end, skip;
-	struct buf work = { data, 0, 0, 0, 0 };
+	size_t i, end, skip, span_beg, span_size;
 
 	if (!size || data[0] != '#') return 0;
 
 	while (level < size && level < 6 && data[level] == '#') level += 1;
 	for (i = level; i < size && (data[i] == ' ' || data[i] == '\t');
 							i += 1);
-	work.data = data + i;
+	span_beg = i;
 
 	for (end = i; end < size && data[end] != '\n'; end += 1);
 	skip = end;
@@ -1162,9 +1164,12 @@ parse_atxheader(struct buf *ob, struct render *rndr,
 	if (end <= i)
 		return parse_paragraph(ob, rndr, data, size);
 
-	work.size = end - i;
-	if (rndr->make.header)
-		rndr->make.header(ob, &work, level, rndr->make.opaque);
+	span_size = end - span_beg;
+	if (rndr->make.header) {
+		struct buf *span = new_work_buffer(rndr);
+		parse_inline(span, rndr, data + span_beg, span_size);
+		rndr->make.header(ob, span, level, rndr->make.opaque);
+		release_work_buffer(rndr, span); }
 	return skip; }
 
 
