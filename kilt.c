@@ -148,6 +148,9 @@ struct mkd_renderer to_man = {
 	man_list,
 	man_listitem,
 	man_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	/* span-level callbacks */
 	NULL,

@@ -51,6 +51,11 @@ struct mkd_renderer {
 	void (*listitem)(struct buf *ob, struct buf *text,
 						int flags, void *opaque);
 	void (*paragraph)(struct buf *ob, struct buf *text, void *opaque);
+	void (*table)(struct buf *ob, struct buf *head_row, struct buf *rows,
+							void *opaque);
+	void (*table_cell)(struct buf *ob, struct buf *text, int flags,
+							void *opaque);
+	void (*table_row)(struct buf *ob, struct buf *cells, void *opaque);
 
 	/* span level callbacks - NULL or return 0 prints the span verbatim */
 	int (*autolink)(struct buf *ob, struct buf *link,
@@ -87,6 +92,14 @@ struct mkd_renderer {
 /* list/listitem flags */
 #define MKD_LIST_ORDERED	1
 #define MKD_LI_BLOCK		2  /* <li> containing block data */
+
+/* table cell flags */
+#define MKD_CELL_ALIGN_DEFAULT	0
+#define MKD_CELL_ALIGN_LEFT	1
+#define MKD_CELL_ALIGN_RIGHT	2
+#define MKD_CELL_ALIGN_CENTER	3  /* LEFT | RIGHT */
+#define MKD_CELL_ALIGN_MASK	3
+#define MKD_CELL_HEAD		4
 
 
 

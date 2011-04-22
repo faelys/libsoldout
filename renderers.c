@@ -240,6 +240,9 @@ const struct mkd_renderer mkd_html = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -303,6 +306,9 @@ const struct mkd_renderer mkd_xhtml = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -435,6 +441,50 @@ discount_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 	bufput(ob, text->data + i, text->size - i);
 	BUFPUTSL(ob, "</div>\n"); }
 
+static void
+discount_table(struct buf *ob, struct buf *head_row, struct buf *rows,
+					void *opaque) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<table>\n");
+	if (head_row) {
+		BUFPUTSL(ob, "<thead>\n");
+		bufput(ob, head_row->data, head_row->size);
+		BUFPUTSL(ob, "</thead>\n<tbody>\n"); }
+	if (rows)
+		bufput(ob, rows->data, rows->size);
+	if (head_row)
+		BUFPUTSL(ob, "</tbody>\n");
+	BUFPUTSL(ob, "</table>\n"); }
+
+static void
+discount_table_row(struct buf *ob, struct buf *cells, void *opaque) {
+	BUFPUTSL(ob, "  <tr>\n");
+	if (cells) bufput(ob, cells->data, cells->size);
+	BUFPUTSL(ob, "  </tr>\n"); }
+
+static void
+discount_table_cell(struct buf *ob, struct buf *text, int flags, void *opaque){
+	if (flags & MKD_CELL_HEAD)
+		BUFPUTSL(ob, "    <th");
+	else
+		BUFPUTSL(ob, "    <td");
+	switch (flags & MKD_CELL_ALIGN_MASK) {
+		case MKD_CELL_ALIGN_LEFT:
+			BUFPUTSL(ob, " align=\"left\"");
+			break;
+		case MKD_CELL_ALIGN_RIGHT:
+			BUFPUTSL(ob, " align=\"right\"");
+			break;
+		case MKD_CELL_ALIGN_CENTER:
+			BUFPUTSL(ob, " align=\"center\"");
+			break; }
+	bufputc(ob, '>');
+	if (text) bufput(ob, text->data, text->size);
+	if (flags & MKD_CELL_HEAD)
+		BUFPUTSL(ob, "</th>\n");
+	else
+		BUFPUTSL(ob, "</td>\n"); }
+
 /* exported renderer structures */
 const struct mkd_renderer discount_html = {
 	NULL,
@@ -448,6 +498,9 @@ const struct mkd_renderer discount_html = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	discount_table,
+	discount_table_cell,
+	discount_table_row,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -477,6 +530,9 @@ const struct mkd_renderer discount_xhtml = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	discount_table,
+	discount_table_cell,
+	discount_table_row,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -586,6 +642,9 @@ const struct mkd_renderer nat_html = {
 	rndr_list,
 	rndr_listitem,
 	nat_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -615,6 +674,9 @@ const struct mkd_renderer nat_xhtml = {
 	rndr_list,
 	rndr_listitem,
 	nat_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,

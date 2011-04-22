@@ -841,6 +841,36 @@ is_headerline(char *data, size_t size) {
 	return 0; }
 
 
+/* is_tableline • returns the number of column tables in the given line */
+static int
+is_tableline(char *data, size_t size) {
+	size_t i = 0;
+	int n_sep = 0, outer_sep = 0;
+
+	/* skip initial blanks */
+	while (i < size && (data[i] == ' ' || data[i] == '\t'))
+		i += 1;
+
+	/* check for initial '|' */
+	if (i < size && data[i] == '|')
+		outer_sep += 1;
+
+	/* count the number of pipes in the line */
+	for (n_sep = 0; i < size && data[i] != '\n'; i += 1)
+		if (data[i] == '|')
+			n_sep += 1;
+
+	/* march back to check for optional last '|' before blanks and EOL */
+	while (i
+	&& (data[i - 1] == ' ' || data[i - 1] == '\t' || data[i - 1] == '\n'))
+		i -= 1;
+	if (i && data[i - 1] == '|')
+		outer_sep += 1;
+
+	/* return the number of column or 0 if it's not a table line */
+	return (n_sep > 0) ? (n_sep - outer_sep + 1) : 0; }
+
+
 /* prefix_quote • returns blockquote prefix length */
 static size_t
 prefix_quote(char *data, size_t size) {
@@ -1295,12 +1325,174 @@ parse_htmlblock(struct buf *ob, struct render *rndr,
 	return i; }
 
 
+/* parse_table_cell • parse a cell inside a table */
+static void
+parse_table_cell(struct buf *ob, struct render *rndr, char *data, size_t size,
+				int flags) {
+	struct buf *span = new_work_buffer(rndr);
+	parse_inline(span, rndr, data, size);
+	rndr->make.table_cell(ob, span, flags, rndr->make.opaque);
+	release_work_buffer(rndr, span); }
+
+
+/* parse_table_row • parse an input line into a table row */
+static size_t
+parse_table_row(struct buf *ob, struct render *rndr, char *data, size_t size,
+				int *aligns, size_t align_size, int flags) {
+	size_t i = 0, col = 0;
+	size_t beg, end, total = 0;
+	struct buf *cells = new_work_buffer(rndr);
+	int align;
+
+	/* skip leading blanks and sperator */
+	while (i < size && (data[i] == ' ' || data[i] == '\t'))
+		i += 1;
+	if (i < size && data[i] == '|')
+		i += 1;
+
+	/* go over all the cells */
+	while (i < size && total == 0) {
+		/* check optional left/center align marker */
+		align = 0;
+		if (data[i] == ':') {
+			align |= MKD_CELL_ALIGN_LEFT;
+			i += 1; }
+
+		/* skip blanks */
+		while (i < size && (data[i] == ' ' || data[i] == '\t'))
+			i += 1;
+		beg = i;
+
+		/* forward to the next separator or EOL */
+		while (i < size && data[i] != '|' && data[i] != '\n')
+			i += 1;
+		end = i;
+		if (i < size) {
+			i += 1;
+			if (data[i - 1] == '\n')
+				total = i; }
+
+		/* check optional right/center align marker */
+		if (i > beg && data[end - 1] == ':') {
+			align |= MKD_CELL_ALIGN_RIGHT;
+			end -= 1; }
+
+		/* remove trailing blanks */
+		while (end > beg
+		&& (data[end - 1] == ' ' || data[end - 1] == '\t'))
+			end -= 1;
+
+		/* skip the last cell if it was only blanks */
+		/* (because it is only the optional end separator) */
+		if (total && end <= beg) continue;
+
+		/* fallback on default alignment if not explicit */
+		if (align == 0 && aligns && col < align_size)
+			align = aligns[col];
+
+		/* render cells */
+		parse_table_cell(cells, rndr, data + beg, end - beg,
+		    align | flags);
+
+		col += 1; }
+
+	/* render the whole row and clean up */
+	rndr->make.table_row(ob, cells, rndr->make.opaque);
+	release_work_buffer(rndr, cells);
+	return total ? total : size; }
+
+
+/* parse_table • parsing of a whole table */
+static size_t
+parse_table(struct buf *ob, struct render *rndr, char *data, size_t size) {
+	size_t i = 0, head_end, col;
+	size_t align_size = 0;
+	int *aligns = 0;
+	struct buf *head = 0;
+	struct buf *rows = new_work_buffer(rndr);
+
+	/* skip the first (presumably header) line */
+	while (i < size && data[i] != '\n')
+		i += 1;
+	head_end = i;
+
+	/* fallback on end of input */
+	if (i >= size) {
+		parse_table_row(rows, rndr, data, size, 0, 0, 0);
+		rndr->make.table(ob, 0, rows, rndr->make.opaque);
+		release_work_buffer(rndr, rows);
+		return i; }
+
+	/* attempt to parse a table rule, i.e. blanks, dash, colons and sep */
+	i += 1;
+	col = 0;
+	while (i < size && (data[i] == ' ' || data[i] == '\t' || data[i] == '-'
+			 || data[i] == ':' || data[i] == '|')) {
+		if (data[i] == '|') align_size += 1;
+		if (data[i] == ':') col = 1;
+		i += 1; }
+
+	if (i < size && data[i] == '\n') {
+
+		/* render the header row */
+		head = new_work_buffer(rndr);
+		parse_table_row(head, rndr, data, head_end, 0, 0,
+		    MKD_CELL_HEAD);
+
+		/* parse alignments if provided */
+		if (col && (aligns = malloc(align_size * sizeof *aligns)) != 0){
+			for (i = 0; i < align_size; i += 1)
+				aligns[i] = 0;
+			col = 0;
+			i = head_end + 1;
+
+			/* skip initial white space and optional separator */
+			while (i < size && (data[i] == ' ' || data[i] == '\t'))
+				i += 1;
+			if (data[i] != '|') i += 1;
+
+			/* compute default alignment for each column */
+			while (i < size && data[i] != '\n') {
+				if (data[i] == ':')
+					aligns[col] |= MKD_CELL_ALIGN_LEFT;
+				while (i < size
+				&& data[i] != '|' && data[i] != '\n')
+					i += 1;
+				if (data[i - 1] == ':')
+					aligns[col] |= MKD_CELL_ALIGN_RIGHT;
+				if (i < size && data[i] == '|')
+					i += 1; } }
+
+		/* point i to the beginning of next line/row */
+		i += 1; }
+
+	else {
+		/* there is no valid ruler, continuing without header */
+		i = 0; }
+
+	/* render the table body lines */
+	while (i < size && is_tableline(data + i, size - i))
+		i += parse_table_row(rows, rndr, data + i, size - i,
+		    aligns, align_size, 0);
+
+	/* render the full table */
+	rndr->make.table(ob, head, rows, rndr->make.opaque);
+
+	/* cleanup */
+	if (head) release_work_buffer(rndr, head);
+	release_work_buffer(rndr, rows);
+	free(aligns);
+	return i; }
+
+
 /* parse_block • parsing of one block, returning next char to parse */
 static void
 parse_block(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end, i;
 	char *txt_data;
+	int has_table = (rndr->make.table && rndr->make.table_row
+	    && rndr->make.table_cell);
 
 	if (rndr->work.size > rndr->make.max_work_stack) {
 		if (size) bufput(ob, data, size);
@@ -1331,6 +1523,8 @@ parse_block(struct buf *ob, struct render *rndr,
 		else if (prefix_oli(txt_data, end))
 			beg += parse_list(ob, rndr, txt_data, end,
 						MKD_LIST_ORDERED);
+		else if (has_table && is_tableline(txt_data, end))
+			beg += parse_table(ob, rndr, txt_data, end);
 		else
 			beg += parse_paragraph(ob, rndr, txt_data, end); } }
 
