@@ -1439,6 +1439,7 @@ parse_table(struct buf *ob, struct render *rndr, char *data, size_t size) {
 		i += 1; }
 
 	if (i < size && data[i] == '\n') {
+		align_size += 1;
 
 		/* render the header row */
 		head = new_work_buffer(rndr);
@@ -1455,7 +1456,7 @@ parse_table(struct buf *ob, struct render *rndr, char *data, size_t size) {
 			/* skip initial white space and optional separator */
 			while (i < size && (data[i] == ' ' || data[i] == '\t'))
 				i += 1;
-			if (data[i] != '|') i += 1;
+			if (data[i] == '|') i += 1;
 
 			/* compute default alignment for each column */
 			while (i < size && data[i] != '\n') {
@@ -1467,7 +1468,8 @@ parse_table(struct buf *ob, struct render *rndr, char *data, size_t size) {
 				if (data[i - 1] == ':')
 					aligns[col] |= MKD_CELL_ALIGN_RIGHT;
 				if (i < size && data[i] == '|')
-					i += 1; } }
+					i += 1;
+				col += 1; } }
 
 		/* point i to the beginning of next line/row */
 		i += 1; }
