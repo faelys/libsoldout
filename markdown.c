@@ -841,6 +841,12 @@ is_headerline(char *data, size_t size) {
 	return 0; }
 
 
+/* is_table_sep • returns wether there is a table separator at the given pos */
+static int
+is_table_sep(char *data, size_t pos) {
+	return data[pos] == '|' && (pos == 0 || data[pos - 1] != '\\'); }
+
+
 /* is_tableline • returns the number of column tables in the given line */
 static int
 is_tableline(char *data, size_t size) {
@@ -857,14 +863,14 @@ is_tableline(char *data, size_t size) {
 
 	/* count the number of pipes in the line */
 	for (n_sep = 0; i < size && data[i] != '\n'; i += 1)
-		if (data[i] == '|')
+		if (is_table_sep(data, i))
 			n_sep += 1;
 
 	/* march back to check for optional last '|' before blanks and EOL */
 	while (i
 	&& (data[i - 1] == ' ' || data[i - 1] == '\t' || data[i - 1] == '\n'))
 		i -= 1;
-	if (i && data[i - 1] == '|')
+	if (i && is_table_sep(data, i - 1))
 		outer_sep += 1;
 
 	/* return the number of column or 0 if it's not a table line */
@@ -1364,7 +1370,7 @@ parse_table_row(struct buf *ob, struct render *rndr, char *data, size_t size,
 		beg = i;
 
 		/* forward to the next separator or EOL */
-		while (i < size && data[i] != '|' && data[i] != '\n')
+		while (i < size && !is_table_sep(data, i) && data[i] != '\n')
 			i += 1;
 		end = i;
 		if (i < size) {
