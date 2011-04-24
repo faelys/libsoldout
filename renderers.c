@@ -457,7 +457,8 @@ discount_table(struct buf *ob, struct buf *head_row, struct buf *rows,
 	BUFPUTSL(ob, "</table>\n"); }
 
 static void
-discount_table_row(struct buf *ob, struct buf *cells, void *opaque) {
+discount_table_row(struct buf *ob, struct buf *cells, int flags, void *opaque){
+	(void)flags;
 	BUFPUTSL(ob, "  <tr>\n");
 	if (cells) bufput(ob, cells->data, cells->size);
 	BUFPUTSL(ob, "  </tr>\n"); }

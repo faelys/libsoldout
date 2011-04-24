@@ -1403,7 +1403,7 @@ parse_table_row(struct buf *ob, struct render *rndr, char *data, size_t size,
 		col += 1; }
 
 	/* render the whole row and clean up */
-	rndr->make.table_row(ob, cells, rndr->make.opaque);
+	rndr->make.table_row(ob, cells, flags, rndr->make.opaque);
 	release_work_buffer(rndr, cells);
 	return total ? total : size; }
 

@@ -55,7 +55,8 @@ struct mkd_renderer {
 							void *opaque);
 	void (*table_cell)(struct buf *ob, struct buf *text, int flags,
 							void *opaque);
-	void (*table_row)(struct buf *ob, struct buf *cells, void *opaque);
+	void (*table_row)(struct buf *ob, struct buf *cells, int flags,
+							void *opaque);
 
 	/* span level callbacks - NULL or return 0 prints the span verbatim */
 	int (*autolink)(struct buf *ob, struct buf *link,
