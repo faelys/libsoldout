@@ -1709,8 +1709,8 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 					cmp_link_ref_sort);
 
 	/* adding a final newline if not already present */
-	if (!text->size) return;
-	if (text->data[text->size - 1] != '\n'
+	if (text->size
+	&&  text->data[text->size - 1] != '\n'
 	&&  text->data[text->size - 1] != '\r')
 		bufputc(text, '\n');
 
