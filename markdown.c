@@ -600,7 +600,7 @@ char_langle_tag(struct buf *ob, struct render *rndr,
 /* get_link_inline • extract inline-style link and title from parenthesed data*/
 static int
 get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
-	size_t i = 0;
+	size_t i = 0, mark;
 	size_t link_b, link_e;
 	size_t title_b = 0, title_e = 0;
 
@@ -643,10 +643,16 @@ get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
 	if (data[link_b] == '<') link_b += 1;
 	if (data[link_e - 1] == '>') link_e -= 1;
 
-	/* handing back  link and title */
+	/* escape backslashed character from link */
 	link->size = 0;
-	if (link_e > link_b)
-		bufput(link, data + link_b, link_e - link_b);
+	i = link_b;
+	while (i < link_e) {
+		mark = i;
+		while (i < link_e && data[i] != '\\') i += 1;
+		bufput(link, data + mark, i - mark);
+		while (i < link_e && data[i] == '\\') i += 1; }
+
+	/* handing back title */
 	title->size = 0;
 	if (title_e > title_b)
 		bufput(title, data + title_b, title_e - title_b);
@@ -720,7 +726,9 @@ char_link(struct buf *ob, struct render *rndr,
 	/* inline style link */
 	if (i < size && data[i] == '(') {
 		size_t span_end = i;
-		while (span_end < size && data[span_end] != ')')
+		while (span_end < size
+		&& !(data[span_end] == ')'
+		 && (span_end == i || data[span_end - 1] != '\\')))
 			span_end += 1;
 
 		if (span_end >= size
