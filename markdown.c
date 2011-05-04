@@ -607,7 +607,9 @@ get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
 	link->size = title->size = 0;
 
 	/* skipping initial whitespace */
-	while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	while (i < size
+	&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+		i += 1;
 	link_b = i;
 
 	/* looking for link end: ' " */
@@ -633,7 +635,8 @@ get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
 
 	/* remove whitespace at the end of the link */
 	while (link_e > link_b
-	&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
+	&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'
+	 || data[link_e - 1] == '\n'))
 		link_e -= 1;
 
 	/* remove optional angle brackets around the link */
