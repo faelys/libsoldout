@@ -104,6 +104,43 @@ static struct html_tag block_tags[] = {
  * STATIC HELPER FUNCTIONS *
  ***************************/
 
+/* build_ref_id • collapse whitespace from input text to make it a ref id */
+static int
+build_ref_id(struct buf *id, const char *data, size_t size) {
+	size_t beg, i;
+
+	/* skip leading whitespace */
+	while (size > 0
+	&& (data[0] == ' ' || data[0] == '\t' || data[0] == '\n')) {
+		data += 1;
+		size -= 1; }
+
+	/* skip trailing whitespace */
+	while (size > 0
+	&& (data[size - 1] == ' ' || data[size - 1] == '\t'
+	 || data[size - 1] == '\n'))
+		size -= 1;
+	if (size == 0) return -1;
+
+	/* making the ref id */
+	i = 0;
+	id->size = 0;
+	while (i < size) {
+		/* copy non-whitespace into the output buffer */
+		beg = i;
+		while (i < size
+		&& !(data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+			i += 1;
+		bufput(id, data + beg, i - beg);
+
+		/* add a single space and skip all consecutive whitespace */
+		if (i < size) bufputc(id, ' ');
+		while (i < size
+		&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+			i += 1; }
+	return 0; }
+
+
 /* cmp_link_ref • comparison function for link_ref sorted arrays */
 static int
 cmp_link_ref(void *key, void *array_entry) {
@@ -147,6 +184,28 @@ find_block_tag(char *data, size_t size) {
 	return bsearch(&key, block_tags,
 				sizeof block_tags / sizeof block_tags[0],
 				sizeof block_tags[0], cmp_html_tag); }
+
+
+/* new_work_buffer • get a new working buffer from the stack or create one */
+static struct buf *
+new_work_buffer(struct render *rndr) {
+	struct buf *ret = 0;
+
+	if (rndr->work.size < rndr->work.asize) {
+		ret = rndr->work.item[rndr->work.size ++];
+		ret->size = 0; }
+	else {
+		ret = bufnew(WORK_UNIT);
+		parr_push(&rndr->work, ret); }
+	return ret; }
+
+
+/* release_work_buffer • release the given working buffer */
+static void
+release_work_buffer(struct render *rndr, struct buf *buf) {
+	assert(rndr->work.size > 0
+	&& rndr->work.item[rndr->work.size - 1] == buf);
+	rndr->work.size -= 1; }
 
 
 
@@ -228,6 +287,10 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 	size_t i = 0, end = 0;
 	char_trigger action = 0;
 	struct buf work = { 0, 0, 0, 0, 0 };
+
+	if (rndr->work.size > rndr->make.max_work_stack) {
+		if (size) bufput(ob, data, size);
+		return; }
 
 	while (i < size) {
 		/* copying inactive chars into the output */
@@ -327,15 +390,10 @@ parse_emph1(struct buf *ob, struct render *rndr,
 			continue; }
 		if (data[i] == c && data[i - 1] != ' '
 		&& data[i - 1] != '\t' && data[i - 1] != '\n') {
-			if (rndr->work.size < rndr->work.asize) {
-				work = rndr->work.item[rndr->work.size ++];
-				work->size = 0; }
-			else {
-				work = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, work); }
+			work = new_work_buffer(rndr);
 			parse_inline(work, rndr, data, i);
 			r = rndr->make.emphasis(ob, work, c, rndr->make.opaque);
-			rndr->work.size -= 1;
+			release_work_buffer(rndr, work);
 			return r ? i + 1 : 0; } }
 	return 0; }
 
@@ -357,16 +415,11 @@ parse_emph2(struct buf *ob, struct render *rndr,
 		if (i + 1 < size && data[i] == c && data[i + 1] == c
 		&& i && data[i - 1] != ' '
 		&& data[i - 1] != '\t' && data[i - 1] != '\n') {
-			if (rndr->work.size < rndr->work.asize) {
-				work = rndr->work.item[rndr->work.size ++];
-				work->size = 0; }
-			else {
-				work = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, work); }
+			work = new_work_buffer(rndr);
 			parse_inline(work, rndr, data, i);
 			r = rndr->make.double_emphasis(ob, work, c,
 				rndr->make.opaque);
-			rndr->work.size -= 1;
+			release_work_buffer(rndr, work);
 			return r ? i + 2 : 0; }
 		i += 1; }
 	return 0; }
@@ -393,17 +446,11 @@ parse_emph3(struct buf *ob, struct render *rndr,
 		if (i + 2 < size && data[i + 1] == c && data[i + 2] == c
 		&& rndr->make.triple_emphasis) {
 			/* triple symbol found */
-			struct buf *work = 0;
-			if (rndr->work.size < rndr->work.asize) {
-				work = rndr->work.item[rndr->work.size ++];
-				work->size = 0; }
-			else {
-				work = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, work); }
+			struct buf *work = new_work_buffer(rndr);
 			parse_inline(work, rndr, data, i);
 			r = rndr->make.triple_emphasis(ob, work, c,
 							rndr->make.opaque);
-			rndr->work.size -= 1;
+			release_work_buffer(rndr, work);
 			return r ? i + 3 : 0; }
 		else if (i + 1 < size && data[i + 1] == c) {
 			/* double symbol found, handing over to emph1 */
@@ -447,7 +494,7 @@ char_emphasis(struct buf *ob, struct render *rndr,
 static size_t
 char_linebreak(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
-	if (offset < 2 || data[-1] != ' ' || data[-2] != 2) return 0;
+	if (offset < 2 || data[-1] != ' ' || data[-2] != ' ') return 0;
 	/* removing the last space from ob and rendering */
 	if (ob->size && ob->data[ob->size - 1] == ' ') ob->size -= 1;
 	return rndr->make.linebreak(ob, rndr->make.opaque) ? 1 : 0; }
@@ -550,16 +597,102 @@ char_langle_tag(struct buf *ob, struct render *rndr,
 	else return end; }
 
 
+/* get_link_inline • extract inline-style link and title from parenthesed data*/
+static int
+get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
+	size_t i = 0, mark;
+	size_t link_b, link_e;
+	size_t title_b = 0, title_e = 0;
+
+	link->size = title->size = 0;
+
+	/* skipping initial whitespace */
+	while (i < size
+	&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
+		i += 1;
+	link_b = i;
+
+	/* looking for link end: ' " */
+	while (i < size && data[i] != '\'' && data[i] != '"')
+		i += 1;
+	link_e = i;
+
+	/* looking for title end if present */
+	if (data[i] == '\'' || data[i] == '"') {
+		i += 1;
+		title_b = i;
+
+		/* skipping whitespaces after title */
+		title_e = size - 1;
+		while (title_e > title_b && (data[title_e] == ' ' 
+		|| data[title_e] == '\t' || data[title_e] == '\n'))
+			title_e -= 1;
+
+		/* checking for closing quote presence */
+		if (data[title_e] != '\'' &&  data[title_e] != '"') {
+			title_b = title_e = 0;
+			link_e = i; } }
+
+	/* remove whitespace at the end of the link */
+	while (link_e > link_b
+	&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'
+	 || data[link_e - 1] == '\n'))
+		link_e -= 1;
+
+	/* remove optional angle brackets around the link */
+	if (data[link_b] == '<') link_b += 1;
+	if (data[link_e - 1] == '>') link_e -= 1;
+
+	/* escape backslashed character from link */
+	link->size = 0;
+	i = link_b;
+	while (i < link_e) {
+		mark = i;
+		while (i < link_e && data[i] != '\\') i += 1;
+		bufput(link, data + mark, i - mark);
+		while (i < link_e && data[i] == '\\') i += 1; }
+
+	/* handing back title */
+	title->size = 0;
+	if (title_e > title_b)
+		bufput(title, data + title_b, title_e - title_b);
+
+	/* this function always succeed */
+	return 0; }
+
+
+/* get_link_ref • extract referenced link and title from id */
+static int
+get_link_ref(struct render *rndr, struct buf *link, struct buf *title,
+				char * data, size_t size) {
+	struct link_ref *lr;
+
+	/* find the link from its id (stored temporarily in link) */
+	link->size = 0;
+	if (build_ref_id(link, data, size) < 0)
+		return -1;
+	lr = arr_sorted_find(&rndr->refs, link, cmp_link_ref);
+	if (!lr) return -1;
+
+	/* fill the output buffers */
+	link->size = 0;
+	if (lr->link)
+		bufput(link, lr->link->data, lr->link->size);
+	title->size = 0;
+	if (lr->title)
+		bufput(title, lr->title->data, lr->title->size);
+	return 0; }
+
+
 /* char_link • '[': parsing a link or an image */
 static size_t
 char_link(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
 	int is_img = (offset && data[-1] == '!'), level;
-	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0;
+	size_t i = 1, txt_e;
 	struct buf *content = 0;
 	struct buf *link = 0;
 	struct buf *title = 0;
-	size_t org_work_size = rndr->work.size;
 	int text_has_nl = 0, ret;
 
 	/* checking whether the correct renderer exists */
@@ -584,162 +717,65 @@ char_link(struct buf *ob, struct render *rndr,
 	&& (data[i] == ' ' || data[i] == '\t' || data[i] == '\n'))
 		i += 1;
 
+	/* allocate temporary buffers to store content, link and title */
+	content = new_work_buffer(rndr);
+	link = new_work_buffer(rndr);
+	title = new_work_buffer(rndr);
+	ret = 0; /* error if we don't get to the callback */
+
 	/* inline style link */
 	if (i < size && data[i] == '(') {
-		/* skipping initial whitespace */
-		i += 1;
-		while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
-		link_b = i;
+		size_t span_end = i;
+		while (span_end < size
+		&& !(data[span_end] == ')'
+		 && (span_end == i || data[span_end - 1] != '\\')))
+			span_end += 1;
 
-		/* looking for link end: ' " ) */
-		while (i < size
-		&& data[i] != '\'' && data[i] != '"' && data[i] != ')')
-			i += 1;
-		if (i >= size) return 0;
-		link_e = i;
+		if (span_end >= size
+		|| get_link_inline(link, title,
+					data + i+1, span_end - (i+1)) < 0)
+			goto char_link_cleanup;
 
-		/* looking for title end if present */
-		if (data[i] == '\'' || data[i] == '"') {
-			i += 1;
-			title_b = i;
-			while (i < size && data[i] != ')')
-				i += 1;
-			if (i >= size) return 0;
-
-			/* skipping whitespaces after title */
-			title_e = i - 1;
-			while (title_e > title_b && (data[title_e] == ' ' 
-			|| data[title_e] == '\t' || data[title_e] == '\n'))
-				title_e -= 1;
-
-			/* checking for closing quote presence */
-			if (data[title_e] != '\'' &&  data[title_e] != '"') {
-				title_b = title_e = 0;
-				link_e = i; } }
-
-		/* remove whitespace at the end of the link */
-		while (link_e > link_b
-		&& (data[link_e - 1] == ' ' || data[link_e - 1] == '\t'))
-			link_e -= 1;
-
-		/* remove optional angle brackets around the link */
-		if (data[link_b] == '<') link_b += 1;
-		if (data[link_e - 1] == '>') link_e -= 1;
-
-		/* building escaped link and title */
-		if (link_e > link_b) {
-			if (rndr->work.size < rndr->work.asize) {
-				link = rndr->work.item[rndr->work.size ++];
-				link->size = 0; }
-			else {
-				link = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, link); }
-			bufput(link, data + link_b, link_e - link_b); }
-		if (title_e > title_b) {
-			if (rndr->work.size < rndr->work.asize) {
-				title = rndr->work.item[rndr->work.size ++];
-				title->size = 0; }
-			else {
-				title = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, title); }
-			bufput(title, data + title_b, title_e - title_b);}
-
-		i += 1; }
+		i = span_end + 1; }
 
 	/* reference style link */
 	else if (i < size && data[i] == '[') {
-		struct buf id = { 0, 0, 0, 0, 0 };
-		struct link_ref *lr;
+		char *id_data;
+		size_t id_size, id_end = i;
+		while (id_end < size && data[id_end] != ']')
+			id_end += 1;
 
-		/* looking for the id */
-		i += 1;
-		link_b = i;
-		while (i < size && data[i] != ']') i += 1;
-		if (i >= size) return 0;
-		link_e = i;
+		if (id_end >= size)
+			goto char_link_cleanup;
 
-		/* finding the link_ref */
-		if (link_b == link_e) {
-			if (text_has_nl) {
-				struct buf *b = 0;
-				size_t j;
-				if (rndr->work.size < rndr->work.asize) {
-					b = rndr->work.item[rndr->work.size ++];
-					b->size = 0; }
-				else {
-					b = bufnew(WORK_UNIT);
-					parr_push(&rndr->work, b); }
-				for (j = 1; j < txt_e; j += 1)
-					if (data[j] != '\n')
-						bufputc(b, data[j]);
-					else if (data[j - 1] != ' ')
-						bufputc(b, ' ');
-				id.data = b->data;
-				id.size = b->size; }
-			else {
-				id.data = data + 1;
-				id.size = txt_e - 1; } }
+		if (i + 1 == id_end) {
+			/* implicit id - use the contents */
+			id_data = data + 1;
+			id_size = txt_e - 1; }
 		else {
-			id.data = data + link_b;
-			id.size = link_e - link_b; }
-		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
-		if (!lr) return 0;
+			/* explici id - between brackets */
+			id_data = data + i + 1;
+			id_size = id_end - (i + 1); }
 
-		/* keeping link and title from link_ref */
-		link = lr->link;
-		title = lr->title;
-		i += 1; }
+		if (get_link_ref(rndr, link, title, id_data, id_size) < 0)
+			goto char_link_cleanup;
+
+		i = id_end + 1; }
 
 	/* shortcut reference style link */
 	else {
-		struct buf id = { 0, 0, 0, 0, 0 };
-		struct link_ref *lr;
-
-		/* crafting the id */
-		if (text_has_nl) {
-			struct buf *b = 0;
-			size_t j;
-			if (rndr->work.size < rndr->work.asize) {
-				b = rndr->work.item[rndr->work.size ++];
-				b->size = 0; }
-			else {
-				b = bufnew(WORK_UNIT);
-				parr_push(&rndr->work, b); }
-			for (j = 1; j < txt_e; j += 1)
-				if (data[j] != '\n')
-					bufputc(b, data[j]);
-				else if (data[j - 1] != ' ')
-					bufputc(b, ' ');
-			id.data = b->data;
-			id.size = b->size; }
-		else {
-			id.data = data + 1;
-			id.size = txt_e - 1; }
-
-		/* finding the link_ref */
-		lr = arr_sorted_find(&rndr->refs, &id, cmp_link_ref);
-		if (!lr) return 0;
-
-		/* keeping link and title from link_ref */
-		link = lr->link;
-		title = lr->title;
+		if (get_link_ref(rndr, link, title, data + 1, txt_e - 1) < 0)
+			goto char_link_cleanup;
 
 		/* rewinding the whitespace */
 		i = txt_e + 1; }
 
 	/* building content: img alt is escaped, link content is parsed */
 	if (txt_e > 1) {
-		if (rndr->work.size < rndr->work.asize) {
-			content = rndr->work.item[rndr->work.size ++];
-			content->size = 0; }
-		else {
-			content = bufnew(WORK_UNIT);
-			parr_push(&rndr->work, content); }
 		if (is_img) bufput(content, data + 1, txt_e - 1);
 		else parse_inline(content, rndr, data + 1, txt_e - 1); }
 
 	/* calling the relevant rendering function */
-	ret = 0;
 	if (is_img) {
 		if (ob->size && ob->data[ob->size - 1] == '!') ob->size -= 1;
 		ret = rndr->make.image(ob, link, title, content,
@@ -747,7 +783,10 @@ char_link(struct buf *ob, struct render *rndr,
 	else ret = rndr->make.link(ob, link, title, content, rndr->make.opaque);
 
 	/* cleanup */
-	rndr->work.size = org_work_size;
+char_link_cleanup:
+	release_work_buffer(rndr, title);
+	release_work_buffer(rndr, link);
+	release_work_buffer(rndr, content);
 	return ret ? i : 0; }
 
 
@@ -813,6 +852,42 @@ is_headerline(char *data, size_t size) {
 	return 0; }
 
 
+/* is_table_sep • returns wether there is a table separator at the given pos */
+static int
+is_table_sep(char *data, size_t pos) {
+	return data[pos] == '|' && (pos == 0 || data[pos - 1] != '\\'); }
+
+
+/* is_tableline • returns the number of column tables in the given line */
+static int
+is_tableline(char *data, size_t size) {
+	size_t i = 0;
+	int n_sep = 0, outer_sep = 0;
+
+	/* skip initial blanks */
+	while (i < size && (data[i] == ' ' || data[i] == '\t'))
+		i += 1;
+
+	/* check for initial '|' */
+	if (i < size && data[i] == '|')
+		outer_sep += 1;
+
+	/* count the number of pipes in the line */
+	for (n_sep = 0; i < size && data[i] != '\n'; i += 1)
+		if (is_table_sep(data, i))
+			n_sep += 1;
+
+	/* march back to check for optional last '|' before blanks and EOL */
+	while (i
+	&& (data[i - 1] == ' ' || data[i - 1] == '\t' || data[i - 1] == '\n'))
+		i -= 1;
+	if (i && is_table_sep(data, i - 1))
+		outer_sep += 1;
+
+	/* return the number of column or 0 if it's not a table line */
+	return (n_sep > 0) ? (n_sep - outer_sep + 1) : 0; }
+
+
 /* prefix_quote • returns blockquote prefix length */
 static size_t
 prefix_quote(char *data, size_t size) {
@@ -846,7 +921,9 @@ prefix_oli(char *data, size_t size) {
 	while (i < size && data[i] >= '0' && data[i] <= '9') i += 1;
 	if (i + 1 >= size || data[i] != '.'
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t')) return 0;
-	return i + 2; }
+	i = i + 2;
+	while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	return i; }
 
 
 /* prefix_uli • returns ordered list item prefix */
@@ -860,7 +937,9 @@ prefix_uli(char *data, size_t size) {
 	|| (data[i] != '*' && data[i] != '+' && data[i] != '-')
 	|| (data[i + 1] != ' ' && data[i + 1] != '\t'))
 		return 0;
-	return i + 2; }
+	i = i + 2;
+	while (i < size && (data[i] == ' ' || data[i] == '\t')) i += 1;
+	return i; }
 
 
 /* parse_block • parsing of one block, returning next char to parse */
@@ -874,14 +953,7 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end = 0, pre, work_size = 0;
 	char *work_data = 0;
-	struct buf *out = 0;
-
-	if (rndr->work.size < rndr->work.asize) {
-		out = rndr->work.item[rndr->work.size ++];
-		out->size = 0; }
-	else {
-		out = bufnew(WORK_UNIT);
-		parr_push(&rndr->work, out); }
+	struct buf *out = new_work_buffer(rndr);
 
 	beg = 0;
 	while (beg < size) {
@@ -907,7 +979,7 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 	parse_block(out, rndr, work_data, work_size);
 	if (rndr->make.blockquote)
 		rndr->make.blockquote(ob, out, rndr->make.opaque);
-	rndr->work.size -= 1;
+	release_work_buffer(rndr, out);
 	return end; }
 
 
@@ -925,7 +997,7 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 		if (is_empty(data + i, size - i)
 		|| (level = is_headerline(data + i, size - i)) != 0)
 			break;
-		if (data[i] == '#'
+		if ((i && data[i] == '#')
 		|| is_hrule(data + i, size - i)) {
 			end = i;
 			break; }
@@ -935,17 +1007,11 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 	while (work.size && data[work.size - 1] == '\n')
 		work.size -= 1;
 	if (!level) {
-		struct buf *tmp = 0;
-		if (rndr->work.size < rndr->work.asize) {
-			tmp = rndr->work.item[rndr->work.size ++];
-			tmp->size = 0; }
-		else {
-			tmp = bufnew(WORK_UNIT);
-			parr_push(&rndr->work, tmp); }
+		struct buf *tmp = new_work_buffer(rndr);
 		parse_inline(tmp, rndr, work.data, work.size);
 		if (rndr->make.paragraph)
 			rndr->make.paragraph(ob, tmp, rndr->make.opaque);
-		rndr->work.size -= 1; }
+		release_work_buffer(rndr, tmp); }
 	else {
 		if (work.size) {
 			size_t beg;
@@ -957,23 +1023,20 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 			while (work.size && data[work.size - 1] == '\n')
 				work.size -= 1;
 			if (work.size) {
-				struct buf *tmp = 0;
-				if (rndr->work.size < rndr->work.asize) {
-					tmp=rndr->work.item[rndr->work.size++];
-					tmp->size = 0; }
-				else {
-					tmp = bufnew(WORK_UNIT);
-					parr_push(&rndr->work, tmp); }
+				struct buf *tmp = new_work_buffer(rndr);
 				parse_inline(tmp, rndr, work.data, work.size);
 				if (rndr->make.paragraph)
 					rndr->make.paragraph(ob, tmp,
 							rndr->make.opaque);
-				rndr->work.size -= 1;
+				release_work_buffer(rndr, tmp);
 				work.data += beg;
 				work.size = i - beg; }
 			else work.size = i; }
-		if (rndr->make.header)
-			rndr->make.header(ob, &work, level,rndr->make.opaque);}
+		if (rndr->make.header) {
+			struct buf *span = new_work_buffer(rndr);
+			parse_inline(span, rndr, work.data, work.size);
+			rndr->make.header(ob, span, level,rndr->make.opaque);
+			release_work_buffer(rndr, span); } }
 	return end; }
 
 
@@ -982,14 +1045,7 @@ static size_t
 parse_blockcode(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end, pre;
-	struct buf *work = 0;
-
-	if (rndr->work.size < rndr->work.asize) {
-		work = rndr->work.item[rndr->work.size ++];
-		work->size = 0; }
-	else {
-		work = bufnew(WORK_UNIT);
-		parr_push(&rndr->work, work); }
+	struct buf *work = new_work_buffer(rndr);
 
 	beg = 0;
 	while (beg < size) {
@@ -1013,7 +1069,7 @@ parse_blockcode(struct buf *ob, struct render *rndr,
 	bufputc(work, '\n');
 	if (rndr->make.blockcode)
 		rndr->make.blockcode(ob, work, rndr->make.opaque);
-	rndr->work.size -= 1;
+	release_work_buffer(rndr, work);
 	return beg; }
 
 
@@ -1038,18 +1094,8 @@ parse_listitem(struct buf *ob, struct render *rndr,
 	while (end < size && data[end - 1] != '\n') end += 1;
 
 	/* getting working buffers */
-	if (rndr->work.size < rndr->work.asize) {
-		work = rndr->work.item[rndr->work.size ++];
-		work->size = 0; }
-	else {
-		work = bufnew(WORK_UNIT);
-		parr_push(&rndr->work, work); }
-	if (rndr->work.size < rndr->work.asize) {
-		inter = rndr->work.item[rndr->work.size ++];
-		inter->size = 0; }
-	else {
-		inter = bufnew(WORK_UNIT);
-		parr_push(&rndr->work, inter); }
+	work = new_work_buffer(rndr);
+	inter = new_work_buffer(rndr);
 
 	/* putting the first line into the working buffer */
 	bufput(work, data + beg, end - beg);
@@ -1119,7 +1165,8 @@ parse_listitem(struct buf *ob, struct render *rndr,
 	/* render of li itself */
 	if (rndr->make.listitem)
 		rndr->make.listitem(ob, inter, *flags, rndr->make.opaque);
-	rndr->work.size -= 2;
+	release_work_buffer(rndr, inter);
+	release_work_buffer(rndr, work);
 	return beg; }
 
 
@@ -1127,15 +1174,8 @@ parse_listitem(struct buf *ob, struct render *rndr,
 static size_t
 parse_list(struct buf *ob, struct render *rndr,
 			char *data, size_t size, int flags) {
-	struct buf *work = 0;
+	struct buf *work = new_work_buffer(rndr);
 	size_t i = 0, j;
-
-	if (rndr->work.size < rndr->work.asize) {
-		work = rndr->work.item[rndr->work.size ++];
-		work->size = 0; }
-	else {
-		work = bufnew(WORK_UNIT);
-		parr_push(&rndr->work, work); }
 
 	while (i < size) {
 		j = parse_listitem(work, rndr, data + i, size - i, &flags);
@@ -1144,7 +1184,7 @@ parse_list(struct buf *ob, struct render *rndr,
 
 	if (rndr->make.list)
 		rndr->make.list(ob, work, flags, rndr->make.opaque);
-	rndr->work.size -= 1;
+	release_work_buffer(rndr, work);
 	return i; }
 
 
@@ -1153,21 +1193,30 @@ static size_t
 parse_atxheader(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	int level = 0;
-	size_t i, end, skip;
-	struct buf work = { data, 0, 0, 0, 0 };
+	size_t i, end, skip, span_beg, span_size;
 
 	if (!size || data[0] != '#') return 0;
+
 	while (level < size && level < 6 && data[level] == '#') level += 1;
 	for (i = level; i < size && (data[i] == ' ' || data[i] == '\t');
 							i += 1);
-	work.data = data + i;
+	span_beg = i;
+
 	for (end = i; end < size && data[end] != '\n'; end += 1);
 	skip = end;
+	if (end <= i)
+		return parse_paragraph(ob, rndr, data, size);
 	while (end && data[end - 1] == '#') end -= 1;
 	while (end && (data[end - 1] == ' ' || data[end - 1] == '\t')) end -= 1;
-	work.size = end - i;
-	if (rndr->make.header)
-		rndr->make.header(ob, &work, level, rndr->make.opaque);
+	if (end <= i)
+		return parse_paragraph(ob, rndr, data, size);
+
+	span_size = end - span_beg;
+	if (rndr->make.header) {
+		struct buf *span = new_work_buffer(rndr);
+		parse_inline(span, rndr, data + span_beg, span_size);
+		rndr->make.header(ob, span, level, rndr->make.opaque);
+		release_work_buffer(rndr, span); }
 	return skip; }
 
 
@@ -1293,12 +1342,181 @@ parse_htmlblock(struct buf *ob, struct render *rndr,
 	return i; }
 
 
+/* parse_table_cell • parse a cell inside a table */
+static void
+parse_table_cell(struct buf *ob, struct render *rndr, char *data, size_t size,
+				int flags) {
+	struct buf *span = new_work_buffer(rndr);
+	parse_inline(span, rndr, data, size);
+	rndr->make.table_cell(ob, span, flags, rndr->make.opaque);
+	release_work_buffer(rndr, span); }
+
+
+/* parse_table_row • parse an input line into a table row */
+static size_t
+parse_table_row(struct buf *ob, struct render *rndr, char *data, size_t size,
+				int *aligns, size_t align_size, int flags) {
+	size_t i = 0, col = 0;
+	size_t beg, end, total = 0;
+	struct buf *cells = new_work_buffer(rndr);
+	int align;
+
+	/* skip leading blanks and sperator */
+	while (i < size && (data[i] == ' ' || data[i] == '\t'))
+		i += 1;
+	if (i < size && data[i] == '|')
+		i += 1;
+
+	/* go over all the cells */
+	while (i < size && total == 0) {
+		/* check optional left/center align marker */
+		align = 0;
+		if (data[i] == ':') {
+			align |= MKD_CELL_ALIGN_LEFT;
+			i += 1; }
+
+		/* skip blanks */
+		while (i < size && (data[i] == ' ' || data[i] == '\t'))
+			i += 1;
+		beg = i;
+
+		/* forward to the next separator or EOL */
+		while (i < size && !is_table_sep(data, i) && data[i] != '\n')
+			i += 1;
+		end = i;
+		if (i < size) {
+			i += 1;
+			if (data[i - 1] == '\n')
+				total = i; }
+
+		/* check optional right/center align marker */
+		if (i > beg && data[end - 1] == ':') {
+			align |= MKD_CELL_ALIGN_RIGHT;
+			end -= 1; }
+
+		/* remove trailing blanks */
+		while (end > beg
+		&& (data[end - 1] == ' ' || data[end - 1] == '\t'))
+			end -= 1;
+
+		/* skip the last cell if it was only blanks */
+		/* (because it is only the optional end separator) */
+		if (total && end <= beg) continue;
+
+		/* fallback on default alignment if not explicit */
+		if (align == 0 && aligns && col < align_size)
+			align = aligns[col];
+
+		/* render cells */
+		parse_table_cell(cells, rndr, data + beg, end - beg,
+		    align | flags);
+
+		col += 1; }
+
+	/* render the whole row and clean up */
+	rndr->make.table_row(ob, cells, flags, rndr->make.opaque);
+	release_work_buffer(rndr, cells);
+	return total ? total : size; }
+
+
+/* parse_table • parsing of a whole table */
+static size_t
+parse_table(struct buf *ob, struct render *rndr, char *data, size_t size) {
+	size_t i = 0, head_end, col;
+	size_t align_size = 0;
+	int *aligns = 0;
+	struct buf *head = 0;
+	struct buf *rows = new_work_buffer(rndr);
+
+	/* skip the first (presumably header) line */
+	while (i < size && data[i] != '\n')
+		i += 1;
+	head_end = i;
+
+	/* fallback on end of input */
+	if (i >= size) {
+		parse_table_row(rows, rndr, data, size, 0, 0, 0);
+		rndr->make.table(ob, 0, rows, rndr->make.opaque);
+		release_work_buffer(rndr, rows);
+		return i; }
+
+	/* attempt to parse a table rule, i.e. blanks, dash, colons and sep */
+	i += 1;
+	col = 0;
+	while (i < size && (data[i] == ' ' || data[i] == '\t' || data[i] == '-'
+			 || data[i] == ':' || data[i] == '|')) {
+		if (data[i] == '|') align_size += 1;
+		if (data[i] == ':') col = 1;
+		i += 1; }
+
+	if (i < size && data[i] == '\n') {
+		align_size += 1;
+
+		/* render the header row */
+		head = new_work_buffer(rndr);
+		parse_table_row(head, rndr, data, head_end, 0, 0,
+		    MKD_CELL_HEAD);
+
+		/* parse alignments if provided */
+		if (col && (aligns = malloc(align_size * sizeof *aligns)) != 0){
+			for (i = 0; i < align_size; i += 1)
+				aligns[i] = 0;
+			col = 0;
+			i = head_end + 1;
+
+			/* skip initial white space and optional separator */
+			while (i < size && (data[i] == ' ' || data[i] == '\t'))
+				i += 1;
+			if (data[i] == '|') i += 1;
+
+			/* compute default alignment for each column */
+			while (i < size && data[i] != '\n') {
+				if (data[i] == ':')
+					aligns[col] |= MKD_CELL_ALIGN_LEFT;
+				while (i < size
+				&& data[i] != '|' && data[i] != '\n')
+					i += 1;
+				if (data[i - 1] == ':')
+					aligns[col] |= MKD_CELL_ALIGN_RIGHT;
+				if (i < size && data[i] == '|')
+					i += 1;
+				col += 1; } }
+
+		/* point i to the beginning of next line/row */
+		i += 1; }
+
+	else {
+		/* there is no valid ruler, continuing without header */
+		i = 0; }
+
+	/* render the table body lines */
+	while (i < size && is_tableline(data + i, size - i))
+		i += parse_table_row(rows, rndr, data + i, size - i,
+		    aligns, align_size, 0);
+
+	/* render the full table */
+	rndr->make.table(ob, head, rows, rndr->make.opaque);
+
+	/* cleanup */
+	if (head) release_work_buffer(rndr, head);
+	release_work_buffer(rndr, rows);
+	free(aligns);
+	return i; }
+
+
 /* parse_block • parsing of one block, returning next char to parse */
 static void
 parse_block(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
 	size_t beg, end, i;
 	char *txt_data;
+	int has_table = (rndr->make.table && rndr->make.table_row
+	    && rndr->make.table_cell);
+
+	if (rndr->work.size > rndr->make.max_work_stack) {
+		if (size) bufput(ob, data, size);
+		return; }
+
 	beg = 0;
 	while (beg < size) {
 		txt_data = data + beg;
@@ -1324,6 +1542,8 @@ parse_block(struct buf *ob, struct render *rndr,
 		else if (prefix_oli(txt_data, end))
 			beg += parse_list(ob, rndr, txt_data, end,
 						MKD_LIST_ORDERED);
+		else if (has_table && is_tableline(txt_data, end))
+			beg += parse_table(ob, rndr, txt_data, end);
 		else
 			beg += parse_paragraph(ob, rndr, txt_data, end); } }
 
@@ -1336,14 +1556,13 @@ parse_block(struct buf *ob, struct render *rndr,
 /* is_ref • returns whether a line is a reference or not */
 static int
 is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
-/*	int n; */
 	size_t i = 0;
 	size_t id_offset, id_end;
 	size_t link_offset, link_end;
 	size_t title_offset, title_end;
 	size_t line_end;
 	struct link_ref *lr;
-/*	struct buf id = { 0, 0, 0, 0, 0 }; / * volatile buf for id search */
+	struct buf *id;
 
 	/* up to 3 optional leading spaces */
 	if (beg + 3 >= end) return 0;
@@ -1422,9 +1641,12 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 	/* a valid ref has been found, filling-in return structures */
 	if (last) *last = line_end;
 	if (!refs) return 1;
+	id = bufnew(WORK_UNIT);
+	if (build_ref_id(id, data + id_offset, id_end - id_offset) < 0) {
+		bufrelease(id);
+		return 0; }
 	lr = arr_item(refs, arr_newitem(refs));
-	lr->id = bufnew(id_end - id_offset);
-	bufput(lr->id, data + id_offset, id_end - id_offset);
+	lr->id = id;
 	lr->link = bufnew(link_end - link_offset);
 	bufput(lr->link, data + link_offset, link_end - link_offset);
 	if (title_end > title_offset) {
@@ -1451,6 +1673,8 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	/* filling the render structure */
 	if (!rndrer) return;
 	rndr.make = *rndrer;
+	if (rndr.make.max_work_stack < 1)
+		rndr.make.max_work_stack = 1;
 	arr_init(&rndr.refs, sizeof (struct link_ref));
 	parr_init(&rndr.work);
 	for (i = 0; i < 256; i += 1) rndr.active_char[i] = 0;
@@ -1496,13 +1720,17 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 					cmp_link_ref_sort);
 
 	/* adding a final newline if not already present */
-	if (!text->size) return;
-	if (text->data[text->size - 1] != '\n'
+	if (text->size
+	&&  text->data[text->size - 1] != '\n'
 	&&  text->data[text->size - 1] != '\r')
 		bufputc(text, '\n');
 
 	/* second pass: actual rendering */
+	if (rndr.make.prolog)
+		rndr.make.prolog(ob, rndr.make.opaque);
 	parse_block(ob, &rndr, text->data, text->size);
+	if (rndr.make.epilog)
+		rndr.make.epilog(ob, rndr.make.opaque);
 
 	/* clean-up */
 	bufrelease(text);

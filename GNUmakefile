@@ -26,10 +26,10 @@ all:		libupskirt.so lace kilt
 
 # libraries
 
-libupskirt.so:	libupskirt.so.1
+libupskirt.so:	libupskirt.so.2
 	ln -s $^ $@
 
-libupskirt.so.1: markdown.o array.o buffer.o renderers.o
+libupskirt.so.2: markdown.o array.o buffer.o renderers.o
 	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 
@@ -49,7 +49,7 @@ benchmark:	benchmark.o libupskirt.so
 
 clean:
 	rm -f *.o
-	rm -f libupskirt.so libupskirt.so.1 lace kilt benchmark
+	rm -f libupskirt.so libupskirt.so.* lace kilt benchmark
 	rm -rf $(DEPDIR)
 
 

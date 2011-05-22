@@ -46,6 +46,26 @@ lus_attr_escape(struct buf *ob, char *src, size_t size) {
 		i += 1; } }
 
 
+/* lus_body_escape • copy the buffer entity-escaping '<', '>' and '&' */
+void
+lus_body_escape(struct buf *ob, char *src, size_t size) {
+	size_t  i = 0, org;
+	while (i < size) {
+		/* copying directly unescaped characters */
+		org = i;
+		while (i < size && src[i] != '<' && src[i] != '>'
+		&& src[i] != '&')
+			i += 1;
+		if (i > org) bufput(ob, src + org, i - org);
+
+		/* escaping */
+		if (i >= size) break;
+		else if (src[i] == '<') BUFPUTSL(ob, "&lt;");
+		else if (src[i] == '>') BUFPUTSL(ob, "&gt;");
+		else if (src[i] == '&') BUFPUTSL(ob, "&amp;");
+		i += 1; } }
+
+
 
 /********************
  * GENERIC RENDERER *
@@ -60,8 +80,8 @@ rndr_autolink(struct buf *ob, struct buf *link, enum mkd_autolink type,
 	lus_attr_escape(ob, link->data, link->size);
 	BUFPUTSL(ob, "\">");
 	if (type == MKDA_EXPLICIT_EMAIL && link->size > 7)
-		lus_attr_escape(ob, link->data + 7, link->size - 7);
-	else	lus_attr_escape(ob, link->data, link->size);
+		lus_body_escape(ob, link->data + 7, link->size - 7);
+	else	lus_body_escape(ob, link->data, link->size);
 	BUFPUTSL(ob, "</a>");
 	return 1; }
 
@@ -69,7 +89,7 @@ static void
 rndr_blockcode(struct buf *ob, struct buf *text, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "<pre><code>");
-	if (text) lus_attr_escape(ob, text->data, text->size);
+	if (text) lus_body_escape(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code></pre>\n"); }
 
 static void
@@ -82,7 +102,7 @@ rndr_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 static int
 rndr_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "<code>");
-	if (text) lus_attr_escape(ob, text->data, text->size);
+	if (text) lus_body_escape(ob, text->data, text->size);
 	BUFPUTSL(ob, "</code>");
 	return 1; }
 
@@ -140,7 +160,7 @@ rndr_listitem(struct buf *ob, struct buf *text, int flags, void *opaque) {
 
 static void
 rndr_normal_text(struct buf *ob, struct buf *text, void *opaque) {
-	if (text) lus_attr_escape(ob, text->data, text->size); }
+	if (text) lus_body_escape(ob, text->data, text->size); }
 
 static void
 rndr_paragraph(struct buf *ob, struct buf *text, void *opaque) {
@@ -209,6 +229,9 @@ html_linebreak(struct buf *ob, void *opaque) {
 
 /* exported renderer structure */
 const struct mkd_renderer mkd_html = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	rndr_blockquote,
 	rndr_raw_block,
@@ -217,6 +240,9 @@ const struct mkd_renderer mkd_html = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -231,6 +257,7 @@ const struct mkd_renderer mkd_html = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 
@@ -268,6 +295,9 @@ xhtml_linebreak(struct buf *ob, void *opaque) {
 
 /* exported renderer structure */
 const struct mkd_renderer mkd_xhtml = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	rndr_blockquote,
 	rndr_raw_block,
@@ -276,6 +306,9 @@ const struct mkd_renderer mkd_xhtml = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -290,6 +323,7 @@ const struct mkd_renderer mkd_xhtml = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 
@@ -396,6 +430,7 @@ discount_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "<div class=\"");
 	bufput(ob, text->data + 4, i - 4);
 	BUFPUTSL(ob, "\"><p>");
+	i += 1;
 	if (i + 4 >= text->size && !strncasecmp(text->data + i, "</p>", 4)) {
 		size_t old_i = i;
 		i += 4;
@@ -406,8 +441,56 @@ discount_blockquote(struct buf *ob, struct buf *text, void *opaque) {
 	bufput(ob, text->data + i, text->size - i);
 	BUFPUTSL(ob, "</div>\n"); }
 
+static void
+discount_table(struct buf *ob, struct buf *head_row, struct buf *rows,
+					void *opaque) {
+	if (ob->size) bufputc(ob, '\n');
+	BUFPUTSL(ob, "<table>\n");
+	if (head_row) {
+		BUFPUTSL(ob, "<thead>\n");
+		bufput(ob, head_row->data, head_row->size);
+		BUFPUTSL(ob, "</thead>\n<tbody>\n"); }
+	if (rows)
+		bufput(ob, rows->data, rows->size);
+	if (head_row)
+		BUFPUTSL(ob, "</tbody>\n");
+	BUFPUTSL(ob, "</table>\n"); }
+
+static void
+discount_table_row(struct buf *ob, struct buf *cells, int flags, void *opaque){
+	(void)flags;
+	BUFPUTSL(ob, "  <tr>\n");
+	if (cells) bufput(ob, cells->data, cells->size);
+	BUFPUTSL(ob, "  </tr>\n"); }
+
+static void
+discount_table_cell(struct buf *ob, struct buf *text, int flags, void *opaque){
+	if (flags & MKD_CELL_HEAD)
+		BUFPUTSL(ob, "    <th");
+	else
+		BUFPUTSL(ob, "    <td");
+	switch (flags & MKD_CELL_ALIGN_MASK) {
+		case MKD_CELL_ALIGN_LEFT:
+			BUFPUTSL(ob, " align=\"left\"");
+			break;
+		case MKD_CELL_ALIGN_RIGHT:
+			BUFPUTSL(ob, " align=\"right\"");
+			break;
+		case MKD_CELL_ALIGN_CENTER:
+			BUFPUTSL(ob, " align=\"center\"");
+			break; }
+	bufputc(ob, '>');
+	if (text) bufput(ob, text->data, text->size);
+	if (flags & MKD_CELL_HEAD)
+		BUFPUTSL(ob, "</th>\n");
+	else
+		BUFPUTSL(ob, "</td>\n"); }
+
 /* exported renderer structures */
 const struct mkd_renderer discount_html = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -416,6 +499,9 @@ const struct mkd_renderer discount_html = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	discount_table,
+	discount_table_cell,
+	discount_table_row,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -430,9 +516,13 @@ const struct mkd_renderer discount_html = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 const struct mkd_renderer discount_xhtml = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -441,6 +531,9 @@ const struct mkd_renderer discount_xhtml = {
 	rndr_list,
 	rndr_listitem,
 	rndr_paragraph,
+	discount_table,
+	discount_table_cell,
+	discount_table_row,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -455,6 +548,7 @@ const struct mkd_renderer discount_xhtml = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_",
 	NULL };
 
@@ -538,6 +632,9 @@ nat_paragraph(struct buf *ob, struct buf *text, void *opaque) {
 
 /* exported renderer structures */
 const struct mkd_renderer nat_html = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -546,6 +643,9 @@ const struct mkd_renderer nat_html = {
 	rndr_list,
 	rndr_listitem,
 	nat_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -560,9 +660,13 @@ const struct mkd_renderer nat_html = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_-+|",
 	NULL };
 const struct mkd_renderer nat_xhtml = {
+	NULL,
+	NULL,
+
 	rndr_blockcode,
 	discount_blockquote,
 	rndr_raw_block,
@@ -571,6 +675,9 @@ const struct mkd_renderer nat_xhtml = {
 	rndr_list,
 	rndr_listitem,
 	nat_paragraph,
+	NULL,
+	NULL,
+	NULL,
 
 	rndr_autolink,
 	rndr_codespan,
@@ -585,5 +692,6 @@ const struct mkd_renderer nat_xhtml = {
 	NULL,
 	rndr_normal_text,
 
+	64,
 	"*_-+|",
 	NULL };

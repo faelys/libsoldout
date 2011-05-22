@@ -36,6 +36,10 @@ enum mkd_autolink {
 
 /* mkd_renderer • functions for rendering parsed data */
 struct mkd_renderer {
+	/* document level callbacks */
+	void (*prolog)(struct buf *ob, void *opaque);
+	void (*epilog)(struct buf *ob, void *opaque);
+
 	/* block level callbacks - NULL skips the block */
 	void (*blockcode)(struct buf *ob, struct buf *text, void *opaque);
 	void (*blockquote)(struct buf *ob, struct buf *text, void *opaque);
@@ -47,6 +51,12 @@ struct mkd_renderer {
 	void (*listitem)(struct buf *ob, struct buf *text,
 						int flags, void *opaque);
 	void (*paragraph)(struct buf *ob, struct buf *text, void *opaque);
+	void (*table)(struct buf *ob, struct buf *head_row, struct buf *rows,
+							void *opaque);
+	void (*table_cell)(struct buf *ob, struct buf *text, int flags,
+							void *opaque);
+	void (*table_row)(struct buf *ob, struct buf *cells, int flags,
+							void *opaque);
 
 	/* span level callbacks - NULL or return 0 prints the span verbatim */
 	int (*autolink)(struct buf *ob, struct buf *link,
@@ -69,6 +79,7 @@ struct mkd_renderer {
 	void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
 
 	/* renderer data */
+	int max_work_stack; /* prevent arbitrary deep recursion, cf README */
 	const char *emph_chars; /* chars that trigger emphasis rendering */
 	void *opaque; /* opaque data send to every rendering callback */
 };
@@ -82,6 +93,14 @@ struct mkd_renderer {
 /* list/listitem flags */
 #define MKD_LIST_ORDERED	1
 #define MKD_LI_BLOCK		2  /* <li> containing block data */
+
+/* table cell flags */
+#define MKD_CELL_ALIGN_DEFAULT	0
+#define MKD_CELL_ALIGN_LEFT	1
+#define MKD_CELL_ALIGN_RIGHT	2
+#define MKD_CELL_ALIGN_CENTER	3  /* LEFT | RIGHT */
+#define MKD_CELL_ALIGN_MASK	3
+#define MKD_CELL_HEAD		4
 
 
 

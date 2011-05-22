@@ -120,6 +120,10 @@ are gathered into a `struct mkd_renderer` along with some renderer-related
 data. I think the struct declaration is pretty obvious:
 
 	struct mkd_renderer {
+		/* document level callbacks */
+		void (*prolog)(struct buf *ob, void *opaque);
+		void (*epilog)(struct buf *ob, void *opaque);
+	
 		/* block level callbacks - NULL skips the block */
 		void (*blockcode)(struct buf *ob, struct buf *text, void *opaque);
 		void (*blockquote)(struct buf *ob, struct buf *text, void *opaque);
@@ -131,7 +135,13 @@ data. I think the struct declaration is pretty obvious:
 		void (*listitem)(struct buf *ob, struct buf *text,
 							int flags, void *opaque);
 		void (*paragraph)(struct buf *ob, struct buf *text, void *opaque);
-
+		void (*table)(struct buf *ob, struct buf *head_row, struct buf *rows,
+								void *opaque);
+		void (*table_cell)(struct buf *ob, struct buf *text, int flags,
+								void *opaque);
+		void (*table_row)(struct buf *ob, struct buf *cells, int flags,
+								void *opaque);
+	
 		/* span level callbacks - NULL or return 0 prints the span verbatim */
 		int (*autolink)(struct buf *ob, struct buf *link,
 						enum mkd_autolink type, void *opaque);
@@ -147,12 +157,13 @@ data. I think the struct declaration is pretty obvious:
 		int (*raw_html_tag)(struct buf *ob, struct buf *tag, void *opaque);
 		int (*triple_emphasis)(struct buf *ob, struct buf *text,
 							char c, void *opaque);
-
+	
 		/* low level callbacks - NULL copies input directly into the output */
 		void (*entity)(struct buf *ob, struct buf *entity, void *opaque);
 		void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
-
+	
 		/* renderer data */
+		int max_work_stack; /* prevent arbitrary deep recursion */
 		const char *emph_chars; /* chars that trigger emphasis rendering */
 		void *opaque; /* opaque data send to every rendering callback */
 	};
@@ -211,6 +222,63 @@ characters in (X)HTML: `'<'`, `'>'`, `'&'` and `'"'`.
 
 The `normal_text` callback should also perform whatever escape is needed to
 have the output looking like the input data.
+
+
+### libupskirt extension: PHP-Markdown-like tables
+
+Tables are one of the few extensions that are quite difficult and/or hacky
+to implement using vanilla Markdown parser and a renderer. Thus a support
+has been introduced into the parser, using dedicated callbacks:
+
+  - `table_cell`, which is called with the span-level contents of the cell;
+  - `table_row`, which is called with data returned by `table_cell`;
+  - `table`, which called with data returned by `table_row`.
+
+The input format to describe tables is taken from PHP-Markdown, and looks
+like this:
+
+	header 1    | header 2      | header 3      | header 4
+	------------|:-------------:|--------------:|:--------------
+	first line  |   centered    | right-aligned | left-aligned
+	second line |   centered    |:   centered  :| left-aligned
+	third line  |: left-aglined | right-aligned | right-aligned :
+	column-separator | don't need | to be | aligned in the source
+	| extra speratators | are allowed | at both ends | of the line |
+	| correct number of cell per row is not enforced |
+	| pipe characters can be embedded in cell text by escaping it: \| |
+
+Each row of the input text is a single row in the output, except the header
+rule, which is purely syntactic.
+
+Each cell in a row is delimited by a pipe (`|`) character. Optionally, a
+pipe character can also be present at the beginning and/or at the end of
+the line. Column separator don't have to be aligned in the input, but it
+makes the input more readable.
+
+There is no check of "squareness" of the table: `table_cell` is called once
+for each cell provided in the input, which can be a number of times
+different from one row to the other. If the output *has* to respect a given
+number of cell per row, it's up to the renderer to enforce it, using state
+transmitted through the `opaque` pointer.
+
+The header rule is a line containing only horizontal blanks (space and
+tab), dashes (`-`), colons (`:`) and separator. Moreover, it *must* be the
+second line of the table. In case such a header rule is detected, the first
+line of the table is considered as a header, and passed as the `head_row`
+argument to `table` callback. Moreover `table_row` and `table_cell` are
+called for that specific row with `MKD_CELL_HEAD` flag.
+
+Alignment is defined on a per-cell basis, and specified by a colon (`:`) at
+the very beginning of the input span (i.e. directly after the `|`
+separator, or as the first character on the line) and/or at the very end of
+it (i.e.  directly before the separator, or as the last character on the
+line). A cell with such a leading colon only is left-aligned
+(`MKD_CELL_ALIGN_LEFT`), one with a trailing colon only is right-aligned
+(`MKD_CELL_ALIGN_RIGHT`), and one with both is centered
+(`MKD_CELL_ALIGN_CENTER`).
+
+A column-wise default alignment can be specified with the same syntax on
+the header rule.
 
 
 ### Renderer examples
@@ -431,6 +499,61 @@ can be inline or reference style or a shortcut reference style.
 Emphasis is another interesting piece of code, in that when encountering an
 emphasis character, it first looks whether it is single or double or timple
 emphasis, an then goes forward looking for a match.
+
+
+### Proof that recursion depth is bount by `max_work_stack`
+
+The core of the code here is that when entering the functions
+`parse_inline()` and `parse_block()`, if the current size of the working
+buffer stack (`rndr->work`) is above `max_work_stack`, the parsing is
+short-circuited and the input is appended as-is.
+
+Let's prove now that this actually works, i.e. that it does put an upper
+bound on the nested function call depth.
+
+**Step 1**: there is no function calling itself directly in `markdown.c`.
+This is quite easy to check, though a bit tedious. This proves that a stack
+overflow involves a recursion cycle of a least two functions.
+
+**Step 2**: most of the functions in `markdown.c` are declared by their
+definition, which means that these functions can only call functions
+appearing before them in the source file. This provides a strict hierarchy,
+which prevents any multiple-function recursion cycle. So only exceptions to
+the hierarchy are left to check.
+
+**Step 3**: there are only 3 functions that break the above-mentioned
+hierarchy:
+
+  * `markdown()`, which is declared through the inclusion of `markdown.h`
+at the very beginning of `markdown.c`. However an easy text search shows
+that it's actually never called here, which obviously prevents it from
+being part of a recursion cycle.
+  * `parse_block()`, which is declared at the beginning of the block-level
+section, but defined at the end.
+  * `parse_inline()`, which uses functions pointer to dispatch active
+character handling towards `char_*` functions below.
+
+So at this point I have proved that any recursion cycle *always* involves
+`parse_block()` or `parse_inline()`. So checking a depth-indicator only in
+these functions is enough to prevent recursion cycles.
+
+**Step 4**: `rndr->work.size` is a good depth-indicator, because all calls
+to `parse_block()` or `parse_inline()` happen after at least one working
+buffer allocation. This is again a bit tedious to check:
+
+   * `parse_block()` is called in `markdown()`, which is irrelevant, and in
+`parse_blockquote()` and `parse_listitem()`, which allocate respectively
+one and two working buffers at the very beginning of the function;
+   * `parse_inline()` is called in `parse_emph1()`, `parse_emph2()`,
+`parse_emph3()`, `char_link()`, `parse_paragraph()` (twice), and each time
+it's called right after allocating a new working buffer; and in
+`parse_listitem()` which allocates two working buffers at the very
+beginning of the functions.
+
+Therefore, `rndr->work.size` will always increase between calls of
+`parse_block()` or `parse_inline()`, which in turns proves that putting an
+upper bound on `rndr->work.size` prevents arbitrarily deep recursions, and
+therefore stack overflows when the upper bound is well chosen.
 
 
 ### Utility functions

@@ -20,4 +20,4 @@
 # so has to be preprocessed. expand(1) is used for that preprocessing,
 # feeding tab-free data into my markdown.
 
-expand -t 4 "$@" | $(dirname $0)/markdown
+expand -t 4 "$@" | $(dirname $0)/lace --markdown --xhtml
