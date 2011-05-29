@@ -324,6 +324,7 @@ find_emph_char(char *data, size_t size, char c) {
 		while (i < size && data[i] != c
 		&& data[i] != '`' && data[i] != '[')
 			i += 1;
+		if (i >= size) return 0;
 		if (data[i] == c) return i;
 
 		/* not counting escaped chars */
