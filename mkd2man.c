@@ -1,4 +1,4 @@
-/* kilt.c - upskirt for man */
+/* mkd2man.c - man-page-formatted output from markdown text */
 
 /*
  * Copyright (c) 2009, Baptiste Daroussin and Natacha Porté
