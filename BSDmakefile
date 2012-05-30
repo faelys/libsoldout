@@ -20,7 +20,7 @@ CFLAGS=-c -g -O3 -Wall -Werror -fPIC
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		libupskirt.so lace kilt
+all:		libupskirt.so mkd2html kilt
 
 .PHONY:		all clean
 
@@ -37,7 +37,7 @@ libupskirt.so.2:	markdown.o array.o buffer.o renderers.o
 
 # executables
 
-lace:		lace.o libupskirt.so
+mkd2html:	mkd2html.o libupskirt.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
 kilt:		kilt.o libupskirt.so
@@ -51,7 +51,7 @@ benchmark:	benchmark.o libupskirt.so
 
 clean:
 	rm -f *.o
-	rm -f libupskirt.so libupskirt.so.* lace kilt benchmark
+	rm -f libupskirt.so libupskirt.so.* mkd2html kilt benchmark
 	rm -rf $(DEPDIR)
 
 
