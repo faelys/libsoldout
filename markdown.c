@@ -324,6 +324,7 @@ find_emph_char(char *data, size_t size, char c) {
 		while (i < size && data[i] != c
 		&& data[i] != '`' && data[i] != '[')
 			i += 1;
+		if (i >= size) return 0;
 		if (data[i] == c) return i;
 
 		/* not counting escaped chars */
@@ -331,10 +332,21 @@ find_emph_char(char *data, size_t size, char c) {
 
 		/* skipping a code span */
 		if (data[i] == '`') {
+			size_t span_nb = 0, bt;
 			size_t tmp_i = 0;
-			i += 1;
-			while (i < size && data[i] != '`') {
+
+			/* counting the number of opening backticks */
+			while (i < size && data[i] == '`') {
+				i += 1;
+				span_nb += 1; }
+			if (i >= size) return 0;
+
+			/* finding the matching closing sequence */
+			bt = 0;
+			while (i < size && bt < span_nb) {
 				if (!tmp_i && data[i] == c) tmp_i = i;
+				if (data[i] == '`') bt += 1;
+				else bt = 0;
 				i += 1; }
 			if (i >= size) return tmp_i;
 			i += 1; }

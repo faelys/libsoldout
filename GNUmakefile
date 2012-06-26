@@ -15,41 +15,41 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 DEPDIR=depends
-CFLAGS=-c -g -O3 -Wall -Werror
+CFLAGS=-c -g -O3 -Wall -Werror -fPIC
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		libupskirt.so lace kilt
+all:		libsoldout.so mkd2html mkd2man
 
 .PHONY:		all clean
 
 
 # libraries
 
-libupskirt.so:	libupskirt.so.2
+libsoldout.so:	libsoldout.so.1
 	ln -s $^ $@
 
-libupskirt.so.2: markdown.o array.o buffer.o renderers.o
+libsoldout.so.1: markdown.o array.o buffer.o renderers.o
 	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 
 # executables
 
-lace:		lace.o libupskirt.so
+mkd2html:	mkd2html.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
-kilt:		kilt.o libupskirt.so
+mkd2man:	mkd2man.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
 
 # housekeeping
 
-benchmark:	benchmark.o libupskirt.so
+benchmark:	benchmark.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f *.o
-	rm -f libupskirt.so libupskirt.so.* lace kilt benchmark
+	rm -f libsoldout.so libsoldout.so.* mkd2html mkd2man benchmark
 	rm -rf $(DEPDIR)
 
 

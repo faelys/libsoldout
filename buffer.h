@@ -55,6 +55,27 @@ struct buf {
 	bufput(output, litteral, sizeof litteral - 1)
 
 
+/***********************
+ * FUNCTION ATTRIBUTES *
+ ***********************/
+
+/* BUF_ALLOCATOR • the function returns a completely new ponter */
+#ifdef __GNUC__
+#define BUF_ALLOCATOR \
+	__attribute__ ((malloc))
+#else
+#define BUF_ALLOCATOR
+#endif
+
+
+/* BUF_PRINTF_LIKE • marks the function as behaving like printf */
+#ifdef __GNUC__
+#define BUF_PRINTF_LIKE(format_index, first_variadic_index) \
+	__attribute__ ((format (printf, format_index, first_variadic_index)));
+#else
+#define BUF_PRINTF_LIKE(format_index, first_variadic_index)
+#endif
+
 
 /********************
  * BUFFER FUNCTIONS *
@@ -75,7 +96,7 @@ bufcmps(const struct buf *, const char *);
 /* bufdup • buffer duplication */
 struct buf *
 bufdup(const struct buf *, size_t)
-	__attribute__ ((malloc));
+	BUF_ALLOCATOR;
 
 /* bufgrow • increasing the allocated size to the given value */
 int
@@ -84,7 +105,7 @@ bufgrow(struct buf *, size_t);
 /* bufnew • allocation of a new buffer */
 struct buf *
 bufnew(size_t)
-	__attribute__ ((malloc));
+	BUF_ALLOCATOR;
 
 /* bufnullterm • NUL-termination of the string array (making a C-string) */
 void
@@ -93,7 +114,7 @@ bufnullterm(struct buf *);
 /* bufprintf • formatted printing to a buffer */
 void
 bufprintf(struct buf *, const char *, ...)
-	__attribute__ ((format (printf, 2, 3)));
+	BUF_PRINTF_LIKE(2, 3);
 
 /* bufput • appends raw data to a buffer */
 void

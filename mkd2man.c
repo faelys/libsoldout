@@ -1,4 +1,4 @@
-/* kilt.c - upskirt for man */
+/* mkd2man.c - man-page-formatted output from markdown text */
 
 /*
  * Copyright (c) 2009, Baptiste Daroussin and Natacha Porté
@@ -207,7 +207,12 @@ main(int argc, char **argv) {
 	markdown(ob, ib, &to_man);
 
 	/* writing the result to stdout */
-	fwrite(ob->data, 1, ob->size, stdout);
+	ret = fwrite(ob->data, 1, ob->size, stdout);
+	if (ret < ob->size)
+		fprintf(stderr, "Warning: only %zu output byte written, "
+				"out of %zu\n",
+				ret,
+				ob->size);
 
 	/* cleanup */
 	bufrelease(ib);
