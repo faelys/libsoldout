@@ -142,9 +142,12 @@ latex_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 		case 3:
 			BUFPUTSL(ob, "\\subsubsection{");
 			break;
+		default:
+			fprintf(stderr, "Warning: ignoring header level %d\n",
+                                        level);
 	}
 	if (text) bufput(ob, text->data, text->size);
-	BUFPUTSL(ob, "}");
+	if (level >= 1 && level <= 3) BUFPUTSL(ob, "}\n");
 }
 
 static int
