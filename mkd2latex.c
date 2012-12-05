@@ -209,20 +209,6 @@ latex_paragraph(struct buf *ob, struct buf *text, void *opaque) {
 	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "\n"); }
 
-
-static void
-latex_raw_block(struct buf *ob, struct buf *text, void *opaque) {
-	size_t org, sz;
-	if (!text) return;
-	sz = text->size;
-	while (sz > 0 && text->data[sz - 1] == '\n') sz -= 1;
-	org = 0;
-	while (org < sz && text->data[org] == '\n') org += 1;
-	if (org >= sz) return;
-	if (ob->size) bufputc(ob, '\n');
-	bufput(ob, text->data + org, sz - org);
-	bufputc(ob, '\n'); }
-
 static void
 latex_list(struct buf *ob, struct buf *text, int flags, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
@@ -249,11 +235,6 @@ static void
 latex_hrule(struct buf *ob, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "\\hrule"); }
-
-static int
-latex_raw_inline(struct buf *ob, struct buf *text, void *opaque) {
-	bufput(ob, text->data, text->size);
-	return 1; }
 
 static int
 latex_triple_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
@@ -287,7 +268,7 @@ struct mkd_renderer to_latex = {
 	/* block-level callbacks */
 	latex_blockcode,
 	latex_blockquote,
-	latex_raw_block,
+	latex_blockcode,
 	latex_header,
 	latex_hrule,
 	latex_list,
@@ -305,7 +286,7 @@ struct mkd_renderer to_latex = {
 	latex_image,
 	latex_linebreak,
 	latex_link,
-	latex_raw_inline,
+	latex_codespan,
 	latex_triple_emphasis,
 
 	/* low-level callbacks */
