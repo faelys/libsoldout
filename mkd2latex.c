@@ -24,11 +24,43 @@
 #include "markdown.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 
 #define READ_UNIT 1024
 #define OUTPUT_UNIT 64
+
+/*********************
+ * ENTITY CONVERSION *
+ *********************/
+
+struct str_pair {
+	const char *entity;
+	const char *latex; };
+
+static struct str_pair entity_latex[] = {
+	{ "&amp;",	"\\&" },
+	{ "&apos;",	"'" },
+	{ "&copy;",	"\\copyright" },
+	{ "&gt;",	">" },
+	{ "&lt;",	"<" },
+	{ "&quot;",	"\"" },
+};
+
+static int cmp_entity(const void *key, const void *element) {
+	const struct str_pair *pair = element;
+	const struct buf *entity = key;
+	return bufcmps(entity, pair->entity); }
+
+static const char *entity2latex(const struct buf *entity) {
+	const struct str_pair *pair;
+	pair = bsearch(entity, entity_latex,
+	    sizeof entity_latex / sizeof *entity_latex,
+	    sizeof *entity_latex,
+	    &cmp_entity);
+	return pair ? pair->latex : 0; }
+
 
 
 /******************************
@@ -232,6 +264,16 @@ latex_triple_emphasis(struct buf *ob, struct buf *text, char c, void *opaque) {
 	return 1; }
 
 static void
+latex_entity(struct buf *ob, struct buf *entity, void *opaque) {
+	const char *rendered = entity2latex(entity);
+	if (rendered)
+		bufputs(ob, rendered);
+	else {
+		BUFPUTSL(ob, "\\texttt{");
+		bufput(ob, entity->data, entity->size);
+		BUFPUTSL(ob, "}"); } }
+
+static void
 latex_normal_text(struct buf *ob, struct buf *text, void *opaque) {
 	if (text) latex_text_escape(ob, text->data, text->size); }
 
@@ -267,7 +309,7 @@ struct mkd_renderer to_latex = {
 	latex_triple_emphasis,
 
 	/* low-level callbacks */
-	NULL,
+	latex_entity,
 	latex_normal_text,
 
 	/* renderer data */
