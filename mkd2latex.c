@@ -115,8 +115,8 @@ latex_autolink(struct buf *ob, struct buf *link, enum mkd_autolink type,
 		bufput(ob, link->data, link->size);
 	BUFPUTSL(ob, "}{");
 	if (type == MKDA_EXPLICIT_EMAIL && link->size > 7)
-		bufput(ob, link->data + 7, link->size - 7);
-	else	bufput(ob, link->data, link->size);
+		latex_text_escape(ob, link->data + 7, link->size - 7);
+	else	latex_text_escape(ob, link->data, link->size);
 	BUFPUTSL(ob, "}");
 	return 1; }
 	
