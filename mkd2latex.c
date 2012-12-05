@@ -144,7 +144,7 @@ static void
 latex_blockcode(struct buf *ob, struct buf *text, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, "\\begin{verbatim}\n");
-	if (text) latex_text_escape(ob, text->data, text->size);
+	if (text) bufput(ob, text->data, text->size);
 	BUFPUTSL(ob, "\\end{verbatim}\n"); }
 
 static void
