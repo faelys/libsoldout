@@ -20,7 +20,7 @@ CFLAGS=-c -g -O3 -Wall -Werror -fPIC
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
-all:		libsoldout.so mkd2html mkd2man
+all:		libsoldout.so mkd2html mkd2latex mkd2man
 
 .PHONY:		all clean
 
@@ -38,6 +38,9 @@ libsoldout.so.1:	markdown.o array.o buffer.o renderers.o
 # executables
 
 mkd2html:	mkd2html.o libsoldout.so
+	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
+
+mkd2latex:	mkd2latex.o libsoldout.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
 mkd2man:	mkd2man.o libsoldout.so
