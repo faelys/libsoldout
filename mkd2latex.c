@@ -64,16 +64,15 @@ latex_text_escape(struct buf *ob, char *src, size_t size) {
 
 static void
 latex_prolog(struct buf *ob, void *opaque) {
-	char *prolog =
+	BUFPUTSL(ob,
 		"\\documentclass{article}\n"
 		"\\usepackage{hyperref}\n"
 		"\\usepackage{graphicx}\n"
-		"\\begin{document}\n";
-	bufput(ob, prolog, strlen(prolog)); }
+		"\\begin{document}\n"); }
 
 static void
 latex_epilog(struct buf *ob, void *opaque) {
-	BUFPUTSL(ob, "\n\\end{document}"); }
+	BUFPUTSL(ob, "\n\\end{document}\n"); }
 
 static int
 latex_autolink(struct buf *ob, struct buf *link, enum mkd_autolink type,
