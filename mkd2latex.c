@@ -40,12 +40,107 @@ struct str_pair {
 	const char *latex; };
 
 static struct str_pair entity_latex[] = {
+	{ "&AElig;",	"\\AE{}" },
+	{ "&Aacute;",	"\\'A" },
+	{ "&Acirc;",	"\\^A" },
+	{ "&Agrave;",	"\\`A" },
+	{ "&Aring;",	"\\AA{}" },
+	{ "&Atilde;",	"\\~A" },
+	{ "&Auml;",	"\\\"A" },
+	{ "&Ccedil;",	"\\c{C}" },
+//	{ "&ETH;",	"\\DH{}" },			// not available in OT1
+	{ "&Eacute;",	"\\'E" },
+	{ "&Ecirc;",	"\\^E" },
+	{ "&Egrave;",	"\\`E" },
+	{ "&Euml;",	"\\\"E" },
+	{ "&Iacute;",	"\\'I" },
+	{ "&Icirc;",	"\\^I" },
+	{ "&Igrave;",	"\\`I" },
+	{ "&Iuml;",	"\\\"I" },
+	{ "&Ntilde;",	"\\~N" },
+	{ "&Oacute;",	"\\'O" },
+	{ "&Ocirc;",	"\\^O" },
+	{ "&Ograve;",	"\\`O" },
+	{ "&Oslash;",	"\\O{}" },
+	{ "&Otilde;",	"\\~O" },
+	{ "&Ouml;",	"\\\"O" },
+//	{ "&THORN;",	"\\TH{}" },			// not available in OT1
+	{ "&Uacute;",	"\\'U" },
+	{ "&Ucirc;",	"\\^U" },
+	{ "&Ugrave;",	"\\`U" },
+	{ "&Uuml;",	"\\\"U" },
+	{ "&Ygrave;",	"\\`Y" },
+	{ "&aacute;",	"\\'a" },
+	{ "&acirc;",	"\\^a" },
+//	{ "&acute;",	"\\textasciiacute{}" },		// requires textcomp
+	{ "&aelig;",	"\\ae{}" },
+	{ "&agrave;",	"\\`a" },
 	{ "&amp;",	"\\&" },
 	{ "&apos;",	"'" },
+	{ "&aring;",	"\\aa{}" },
+	{ "&atilde;",	"\\~a" },
+	{ "&auml;",	"\\\"a" },
+//	{ "&brvbar;",	"\\textbrokenbar{}" },		// requires textcomp
+	{ "&ccedil;",	"\\c{c}" },
+	{ "&cedil;",	"\\c{}" },
+//	{ "&cent;",	"\\textcent{}" },		// requires textcomp
 	{ "&copy;",	"\\copyright{}" },
+//	{ "&curren;",	"\\textcurrency{}" },		// requires textcomp
+//	{ "&deg;",	"\\textdegree{}" },		// requires textcomp
+//	{ "&divide;",	"\\textdiv{}" },		// requires textcomp
+	{ "&eacute;",	"\\'e" },
+	{ "&ecirc;",	"\\^e" },
+	{ "&egrave;",	"\\`e" },
+//	{ "&eth;",	"\\dh{}" }.			// not available in OT1
+	{ "&euml;",	"\\\"e" },
+//	{ "&frac12;",	"\\textonehalf{}" },		// requires textcomp
+//	{ "&frac14;",	"\\textonequarter{}" },		// requires textcomp
+//	{ "&frac34;",	"\\textthreequarter{}" },	// requires textcomp
 	{ "&gt;",	"$>$" },
+	{ "&iacute;",	"\\'\\i{}" },
+	{ "&icirc;",	"\\^\\i{}" },
+	{ "&iexcl;",	"\\textexclamdown{}" },
+	{ "&igrave;",	"\\`\\i{}" },
+	{ "&iquest;",	"\\" },
+	{ "&iuml;",	"\\\"\\i{}" },
+//	{ "&laquo;",	"\\guillemotleft{}" },		// not available in OT1
 	{ "&lt;",	"$<$" },
+//	{ "&macr;",	"\\textasciimacaron{}" },	// requires textcomp
+//	{ "&micro;",	"\\textmu{}"},			// requires textcomp
+	{ "&middot;",	"\\textperiodcentered{}" },
+	{ "&nbsp;",	"~" },
+//	{ "&not;",	"\\textlnot{}" },		// requires textcomp
+	{ "&ntilde;",	"\\~n" },
+	{ "&oacute;",	"\\'o" },
+	{ "&ocirc;",	"\\^o" },
+	{ "&ograve;",	"\\`o" },
+	{ "&ordf;",	"\\textordfeminine{}" },
+	{ "&ordm;",	"\\textordmasculine{}" },
+	{ "&oslash;",	"\\o{}" },
+	{ "&otilde;",	"\\~o" },
+	{ "&ouml;",	"\\\"o" },
+	{ "&para;",	"\\P{}" },
+//	{ "&plusmn;",	"\\textpm{}" },			// requires textcomp
+	{ "&pound;",	"\\textsterling{}" },
 	{ "&quot;",	"\"" },
+//	{ "&raquo;",	"\\guillemotright{}" },		// not available in OT1
+	{ "&reg;",	"\\textregistered{}" },
+	{ "&sect;",	"\\S{}" },
+	{ "&shy;",	"\\-" },
+//	{ "&sup1;",	"\\textonesuperior{}" },	// requires textcomp
+//	{ "&sup2;",	"\\texttwosuperior{}" },	// requires textcomp
+//	{ "&sup3;",	"\\textthreesuperior{}" },	// requires textcomp
+	{ "&szlig;",	"\\ss{}" },
+//	{ "&thorn;",	"\\th{}" },			// not available in OT1
+//	{ "&times;",	"\\texttimes{}" },		// requires textcomp
+	{ "&uacute;",	"\\'u" },
+	{ "&ucirc;",	"\\^u" },
+	{ "&ugrave;",	"\\`u" },
+//	{ "&uml;",	"\\textasciidieresis{}" },	// requires textcomp
+	{ "&uuml;",	"\\\"u" },
+	{ "&yacute;",	"\\'y" },
+//	{ "&yen;",	"\\textyen{}" },		// requires textcomp
+	{ "&yuml;",	"\\\"y" },
 };
 
 static int cmp_entity(const void *key, const void *element) {
