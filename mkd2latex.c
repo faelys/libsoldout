@@ -42,7 +42,7 @@ struct str_pair {
 static struct str_pair entity_latex[] = {
 	{ "&amp;",	"\\&" },
 	{ "&apos;",	"'" },
-	{ "&copy;",	"\\copyright" },
+	{ "&copy;",	"\\copyright{}" },
 	{ "&gt;",	">" },
 	{ "&lt;",	"<" },
 	{ "&quot;",	"\"" },
@@ -89,9 +89,9 @@ latex_text_escape(struct buf *ob, char *src, size_t size) {
 		else if (src[i] == '_') BUFPUTSL(ob, "\\_");
 		else if (src[i] == '{') BUFPUTSL(ob, "\\{");
 		else if (src[i] == '}') BUFPUTSL(ob, "\\}");
-		else if (src[i] == '~') BUFPUTSL(ob, "\\textasciitilde");
-		else if (src[i] == '^') BUFPUTSL(ob, "\\textasciicircum");
-		else if (src[i] == '\\') BUFPUTSL(ob, "\\textbackslash");
+		else if (src[i] == '~') BUFPUTSL(ob, "\\textasciitilde{}");
+		else if (src[i] == '^') BUFPUTSL(ob, "\\textasciicircum{}");
+		else if (src[i] == '\\') BUFPUTSL(ob, "\\textbackslash{}");
 		i += 1; } }
 
 static void
