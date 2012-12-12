@@ -43,8 +43,8 @@ static struct str_pair entity_latex[] = {
 	{ "&amp;",	"\\&" },
 	{ "&apos;",	"'" },
 	{ "&copy;",	"\\copyright{}" },
-	{ "&gt;",	">" },
-	{ "&lt;",	"<" },
+	{ "&gt;",	"$>$" },
+	{ "&lt;",	"$<$" },
 	{ "&quot;",	"\"" },
 };
 
@@ -76,7 +76,8 @@ latex_text_escape(struct buf *ob, char *src, size_t size) {
 		while (i < size && src[i] != '&' && src[i] != '%'
 		&& src[i] != '$' && src[i] != '#' && src[i] != '_'
 		&& src[i] != '{' && src[i] != '}' && src[i] != '~'
-		&& src[i] != '^' && src[i] != '\\')
+		&& src[i] != '^' && src[i] != '\\' && src[i] != '<'
+		&& src[i] != '>')
 			i += 1;
 		if (i > org) bufput(ob, src + org, i - org);
 
@@ -89,6 +90,8 @@ latex_text_escape(struct buf *ob, char *src, size_t size) {
 		else if (src[i] == '_') BUFPUTSL(ob, "\\_");
 		else if (src[i] == '{') BUFPUTSL(ob, "\\{");
 		else if (src[i] == '}') BUFPUTSL(ob, "\\}");
+		else if (src[i] == '<') BUFPUTSL(ob, "$<$");
+		else if (src[i] == '>') BUFPUTSL(ob, "$<$");
 		else if (src[i] == '~') BUFPUTSL(ob, "\\textasciitilde{}");
 		else if (src[i] == '^') BUFPUTSL(ob, "\\textasciicircum{}");
 		else if (src[i] == '\\') BUFPUTSL(ob, "\\textbackslash{}");
