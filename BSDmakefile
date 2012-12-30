@@ -54,7 +54,8 @@ benchmark:	benchmark.o libsoldout.so
 
 clean:
 	rm -f *.o
-	rm -f libsoldout.so libsoldout.so.* mkd2html mkd2man benchmark
+	rm -f libsoldout.so libsoldout.so.*
+	rm -f mkd2html mkd2latex mkd2man benchmark
 	rm -rf $(DEPDIR)
 
 
