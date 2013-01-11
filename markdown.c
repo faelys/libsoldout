@@ -705,7 +705,7 @@ char_link(struct buf *ob, struct render *rndr,
 	struct buf *content = 0;
 	struct buf *link = 0;
 	struct buf *title = 0;
-	int text_has_nl = 0, ret;
+	int ret;
 
 	/* checking whether the correct renderer exists */
 	if ((is_img && !rndr->make.image) || (!is_img && !rndr->make.link))
@@ -713,8 +713,7 @@ char_link(struct buf *ob, struct render *rndr,
 
 	/* looking for the matching closing bracket */
 	for (level = 1; i < size; i += 1)
-		if (data[i] == '\n') text_has_nl = 1;
-		else if (data[i - 1] == '\\') continue;
+		if (data[i - 1] == '\\') continue;
 		else if (data[i] == '[') level += 1;
 		else if (data[i] == ']') {
 			level -= 1;
