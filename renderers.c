@@ -1,7 +1,7 @@
 /* renderers.h - example markdown renderers */
 
 /*
- * Copyright (c) 2009, Natacha Porté
+ * Copyright (c) 2009-2014, Natacha Porté
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -694,4 +694,75 @@ const struct mkd_renderer nat_xhtml = {
 
 	64,
 	"*_-+|",
+	NULL };
+
+
+/**************
+ * COMMONMARK *
+ **************/
+
+/* exported renderer structures */
+const struct mkd_renderer common_html = {
+	NULL,
+	NULL,
+
+	rndr_blockcode,
+	rndr_blockquote,
+	rndr_raw_block,
+	rndr_header,
+	html_hrule,
+	rndr_list,
+	rndr_listitem,
+	rndr_paragraph,
+	NULL,
+	NULL,
+	NULL,
+
+	rndr_autolink,
+	rndr_codespan,
+	rndr_double_emphasis,
+	rndr_emphasis,
+	html_image,
+	html_linebreak,
+	rndr_link,
+	rndr_raw_inline,
+	rndr_triple_emphasis,
+
+	NULL,
+	rndr_normal_text,
+
+	64,
+	"*_",
+	NULL };
+const struct mkd_renderer common_xhtml = {
+	NULL,
+	NULL,
+
+	rndr_blockcode,
+	rndr_blockquote,
+	rndr_raw_block,
+	rndr_header,
+	xhtml_hrule,
+	rndr_list,
+	rndr_listitem,
+	rndr_paragraph,
+	NULL,
+	NULL,
+	NULL,
+
+	rndr_autolink,
+	rndr_codespan,
+	rndr_double_emphasis,
+	rndr_emphasis,
+	xhtml_image,
+	xhtml_linebreak,
+	rndr_link,
+	rndr_raw_inline,
+	rndr_triple_emphasis,
+
+	NULL,
+	rndr_normal_text,
+
+	64,
+	"*_",
 	NULL };

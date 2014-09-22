@@ -1,7 +1,7 @@
 /* main.c - main function for markdown module testing */
 
 /*
- * Copyright (c) 2009, Natacha Porté
+ * Copyright (c) 2009-2014, Natacha Porté
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -38,9 +38,12 @@ extern size_t buffer_stat_alloc_bytes;
 /* usage • print the option list */
 void
 usage(FILE *out, const char *name) {
-	fprintf(out, "Usage: %s [-h | -x] [-d | -m | -n] [input-file]\n\n",
+	fprintf(out, "Usage: %s [-H | -x] [-c | -d | -m | -n]"
+	    " [input-file]\n\n",
 	    name);
-	fprintf(out, "\t-d, --discount\n"
+	fprintf(out, "\t-c, --commonmark\n"
+	    "\t\tEnable CommonMark rendering\n"
+	    "\t-d, --discount\n"
 	    "\t\tEnable some Discount extensions (image size specficiation,\n"
 	    "\t\tclass blocks and 'abbr:', 'class:', 'id:' and 'raw:'\n"
 	    "\t\tpseudo-protocols)\n"
@@ -69,6 +72,7 @@ main(int argc, char **argv) {
 	const struct mkd_renderer **prndr;
 	int ch, argerr, help;
 	struct option longopts[] = {
+	    { "commonmark",	no_argument,	0,	'c' },
 	    { "discount",	no_argument,	0,	'd' },
 	    { "html",		no_argument,	0,	'H' },
 	    { "help",		no_argument,	0,	'h' },
@@ -87,6 +91,10 @@ main(int argc, char **argv) {
 	while (!argerr &&
 	    (ch = getopt_long(argc, argv, "dHhmnx", longopts, 0)) != -1)
 		switch (ch) {
+		    case 'c': /* CommonMark standard */
+			hrndr = &common_html;
+			xrndr = &common_xhtml;
+			break;
 		    case 'd': /* discount extension */
 			hrndr = &discount_html;
 			xrndr = &discount_xhtml;
