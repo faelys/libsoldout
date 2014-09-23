@@ -89,7 +89,7 @@ main(int argc, char **argv) {
 	/* argument parsing */
 	argerr = help = 0;
 	while (!argerr &&
-	    (ch = getopt_long(argc, argv, "dHhmnx", longopts, 0)) != -1)
+	    (ch = getopt_long(argc, argv, "cdHhmnx", longopts, 0)) != -1)
 		switch (ch) {
 		    case 'c': /* CommonMark standard */
 			hrndr = &common_html;
