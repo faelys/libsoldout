@@ -701,6 +701,37 @@ const struct mkd_renderer nat_xhtml = {
  * COMMONMARK *
  **************/
 
+/* code span with collapse of consecutive spaces/newlines */
+static int
+common_codespan(struct buf *ob, struct buf *text, void *opaque) {
+	size_t i = 0, begin;
+	int first = 1;
+	BUFPUTSL(ob, "<code>");
+
+	while (i < text->size) {
+		while (i < text->size
+		    && (text->data[i] == ' ' || text->data[i] == '\n'))
+			i += 1;
+
+		if (i >= text->size) break;
+
+		if (first)
+			first = 0;
+		else
+			bufputc(ob, ' ');
+
+		begin = i;
+		while (i < text->size
+		    && text->data[i] != ' ' && text->data[i] != '\n')
+			i += 1;
+
+		if (i > begin)
+			lus_body_escape(ob, text->data + begin, i - begin); }
+
+	BUFPUTSL(ob, "</code>");
+	return 1; }
+
+
 /* exported renderer structures */
 const struct mkd_renderer common_html = {
 	NULL,
@@ -719,7 +750,7 @@ const struct mkd_renderer common_html = {
 	NULL,
 
 	rndr_autolink,
-	rndr_codespan,
+	common_codespan,
 	rndr_double_emphasis,
 	rndr_emphasis,
 	html_image,
