@@ -18,7 +18,7 @@ DEPDIR=depends
 ALLDEPS=$(DEPDIR)/all
 CFLAGS=-c -g -O3 -Wall -Werror -fPIC
 LDFLAGS=-g -O3 -Wall -Werror
-CC=gcc
+CC=cc
 
 all:		libsoldout.so mkd2html mkd2latex mkd2man
 
