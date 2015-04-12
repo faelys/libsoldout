@@ -1,7 +1,7 @@
 /* mkd2man.c - man-page-formatted output from markdown text */
 
 /*
- * Copyright (c) 2009, Baptiste Daroussin and Natacha Porté
+ * Copyright (c) 2009-2015, Baptiste Daroussin and Natacha Porté
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define READ_UNIT 1024
 #define OUTPUT_UNIT 64
