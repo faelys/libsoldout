@@ -70,7 +70,7 @@ zone, so a faster code, but more memory being allocated for nothing. To
 set the tradeoff on a case-by-case basis, there is a `unit` member in the
 structure: when more memory is needed, `asize` is augmented by a multiple
 of `unit`. So the larger `unit`, the more memory is allocated at once, the
-`reallioc()` is called.
+less `realloc()` is called.
 
 To further improve code efficiency by removing unneeded memcpy, I added a
 reference count to the structure: the `ref` member.
@@ -367,7 +367,7 @@ roughly from the bottom of the file to the top.
 
 ### markdown()
 
-The markdown function is divded into four parts: setup of the `struct
+The markdown function is divided into four parts: setup of the `struct
 render`, first pass on the input, actual parsing, and clean-up.
 
 #### render structure
@@ -386,9 +386,9 @@ straightforward.
 `work` is a dynamic array of working buffers. Short-lived working buffers are
 needed throughout the parser, and doing a lot of `malloc()` and `free()` is
 quite inefficient. Instead, when a working buffer is allocated, it is kept
-in this array to be rused next time a working buffer is needed.
+in this array to be reused next time a working buffer is needed.
 
-`active_char` is a C array of function pointeurs, used for span-level
+`active_char` is a C array of function pointers, used for span-level
 parsing: a null pointer is affecter to all inactive characters, and a
 specialized callback is stored for active characters. This initialization
 is the bulk of the first part, because characters should only be marked
@@ -439,7 +439,7 @@ first non-empty non-blockcode-prefixed line. It then calls the rendering
 function for block codes and returns.
 
 Other blocks are more complicated, like paragraphs who can actually be
-setxt-style headers, or list items, which require a special subparse to
+setext-style headers, or list items, which require a special subparse to
 follow Markdown rules where sublist creation is more laxist than list
 creation.
 
@@ -450,12 +450,12 @@ handing the result to the block renderer callback.
 
 Of interest is the `parse_htmlblock()` function: according to Markdown
 webpage, HTML blocks must be delimited by unindented block-level tags,
-whith the opening tag being preceeded by a blank line, and the closing tag
+with the opening tag being preceeded by a blank line, and the closing tag
 being followed by a blank line.
 
 When looking at the reference implementation, `Markdown.pl`, it appeared
 that when this doesn't find a match, a more laxist syntax is tried, where
-the closing tag can be indented,, it only has to be at the end of line and
+the closing tag can be indented, it only has to be at the end of line and
 followed by a blank line.
 
 But when looking at the test suite, it appeared that a single line

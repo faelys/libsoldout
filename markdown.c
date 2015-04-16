@@ -230,7 +230,7 @@ is_mail_autolink(char *data, size_t size) {
 	return i + 1; }
 
 
-/* tag_length • returns the length of the given tag, or 0 is it's not valid */
+/* tag_length • returns the length of the given tag, or 0 if it's not valid */
 static size_t
 tag_length(char *data, size_t size, enum mkd_autolink *autolink) {
 	size_t i, j;
@@ -275,7 +275,7 @@ tag_length(char *data, size_t size, enum mkd_autolink *autolink) {
 				? MKDA_EXPLICIT_EMAIL : MKDA_IMPLICIT_EMAIL;
 		return i + j; }
 
-	/* looking for sometinhg looking like a tag end */
+	/* looking for something like a tag end */
 	while (i < size && data[i] != '>') i += 1;
 	if (i >= size) return 0;
 	return i + 1; }
@@ -958,7 +958,7 @@ static void parse_block(struct buf *ob, struct render *rndr,
 			char *data, size_t size);
 
 
-/* parse_blockquote • hanldes parsing of a blockquote fragment */
+/* parse_blockquote • handles parsing of a blockquote fragment */
 static size_t
 parse_blockquote(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
@@ -994,7 +994,7 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 	return end; }
 
 
-/* parse_blockquote • hanldes parsing of a regular paragraph */
+/* parse_blockquote • handles parsing of a regular paragraph */
 static size_t
 parse_paragraph(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
@@ -1051,7 +1051,7 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 	return end; }
 
 
-/* parse_blockquote • hanldes parsing of a block-level code fragment */
+/* parse_blockquote • handles parsing of a block-level code fragment */
 static size_t
 parse_blockcode(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {

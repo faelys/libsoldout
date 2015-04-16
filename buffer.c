@@ -46,7 +46,7 @@ size_t buffer_stat_alloc_bytes = 0;
  * STATIC HELPER FUNCTIONS *
  ***************************/
 
-/* lower • retruns the lower-case variant of the input char */
+/* lower • returns the lower-case variant of the input char */
 static char
 lower(char c) {
 	return (c >= 'A' && c <= 'Z') ? (c - 'A' + 'a') : c; }
