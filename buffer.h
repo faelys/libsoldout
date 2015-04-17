@@ -59,7 +59,7 @@ struct buf {
  * FUNCTION ATTRIBUTES *
  ***********************/
 
-/* BUF_ALLOCATOR • the function returns a completely new ponter */
+/* BUF_ALLOCATOR • the function returns a completely new pointer */
 #ifdef __GNUC__
 #define BUF_ALLOCATOR \
 	__attribute__ ((malloc))
@@ -107,7 +107,7 @@ struct buf *
 bufnew(size_t)
 	BUF_ALLOCATOR;
 
-/* bufnullterm • NUL-termination of the string array (making a C-string) */
+/* bufnullterm • NULL-termination of the string array (making a C-string) */
 void
 bufnullterm(struct buf *);
 
@@ -120,7 +120,7 @@ bufprintf(struct buf *, const char *, ...)
 void
 bufput(struct buf *, const void*, size_t);
 
-/* bufputs • appends a NUL-terminated string to a buffer */
+/* bufputs • appends a NULL-terminated string to a buffer */
 void
 bufputs(struct buf *, const char*);
 
