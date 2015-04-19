@@ -134,7 +134,7 @@ data. I think the struct declaration is pretty obvious:
 		/* document level callbacks */
 		void (*prolog)(struct buf *ob, void *opaque);
 		void (*epilog)(struct buf *ob, void *opaque);
-	
+
 		/* block level callbacks - NULL skips the block */
 		void (*blockcode)(struct buf *ob, struct buf *text, void *opaque);
 		void (*blockquote)(struct buf *ob, struct buf *text, void *opaque);
@@ -152,7 +152,7 @@ data. I think the struct declaration is pretty obvious:
 								void *opaque);
 		void (*table_row)(struct buf *ob, struct buf *cells, int flags,
 								void *opaque);
-	
+
 		/* span level callbacks - NULL or return 0 prints the span verbatim */
 		int (*autolink)(struct buf *ob, struct buf *link,
 						enum mkd_autolink type, void *opaque);
@@ -168,11 +168,11 @@ data. I think the struct declaration is pretty obvious:
 		int (*raw_html_tag)(struct buf *ob, struct buf *tag, void *opaque);
 		int (*triple_emphasis)(struct buf *ob, struct buf *text,
 							char c, void *opaque);
-	
+
 		/* low level callbacks - NULL copies input directly into the output */
 		void (*entity)(struct buf *ob, struct buf *entity, void *opaque);
 		void (*normal_text)(struct buf *ob, struct buf *text, void *opaque);
-	
+
 		/* renderer data */
 		int max_work_stack; /* prevent arbitrary deep recursion */
 		const char *emph_chars; /* chars that trigger emphasis rendering */
@@ -353,16 +353,16 @@ Here is a list of these extensions :
 Follows an example use of all of them:
 
 	###atx_id#ID was chosen to look nice in atx-style headers ###
-	
+
 	setext_id#Though it will also work in setext-style headers
 	----------------------------------------------------------
-	
+
 	Here is a paragraph with --deleted-- and ++inserted++ text.
-	
+
 	I use CSS rules to render poetry and other verses, using a plain
 	`<span>` for each verse, and enclosing each group of verses in
 	a `<p class="verse">`. Here is how it would look like:
-	
+
 	(verse)|And on the pedestal these words appear:|
 	|"My name is Ozymandias, king of kings:|
 	|Look on my works, ye Mighty, and despair!"|

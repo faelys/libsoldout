@@ -15,7 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
- 
+
  /*
   * Links require the hyperref package, and images require the graphicx
   * package.
@@ -217,7 +217,7 @@ latex_autolink(struct buf *ob, struct buf *link, enum mkd_autolink type,
 	else	latex_text_escape(ob, link->data, link->size);
 	BUFPUTSL(ob, "}");
 	return 1; }
-	
+
 static int
 latex_link(struct buf *ob, struct buf *link, struct buf *title,
 			struct buf *content, void *opaque) {
@@ -236,7 +236,7 @@ latex_image(struct buf *ob, struct buf *link, struct buf *title,
 	BUFPUTSL(ob, "\\includegraphics{");
 	bufput(ob, link->data, link->size);
 	BUFPUTSL(ob, "}");
-	return 1; }	
+	return 1; }
 
 static void
 latex_blockcode(struct buf *ob, struct buf *text, void *opaque) {
@@ -256,7 +256,7 @@ static int
 latex_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	BUFPUTSL(ob, "\\texttt{");
 	if (text) latex_text_escape(ob, text->data, text->size);
-	BUFPUTSL(ob, "}"); 
+	BUFPUTSL(ob, "}");
 	return 1; }
 
 static void
@@ -264,7 +264,7 @@ latex_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	switch(level) {
 		case 1:
-			BUFPUTSL(ob,"\\section{"); 
+			BUFPUTSL(ob,"\\section{");
 			break;
 		case 2:
 			BUFPUTSL(ob, "\\subsection{");

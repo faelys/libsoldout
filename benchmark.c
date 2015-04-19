@@ -96,7 +96,7 @@ main(int argc, char **argv) {
 			in = fopen(argv[f], "r");
 			if (!in) {
 				fprintf(stderr, "Unable to open \"%s\": %s\n",
-					argv[f], strerror(errno)); 
+					argv[f], strerror(errno));
 				continue; } }
 		benchmark(in, nb);
 		if (in != stdin) fclose(in); }

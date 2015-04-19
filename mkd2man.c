@@ -81,7 +81,7 @@ man_prolog(struct buf *ob, void *opaque) {
 		".Dt %s %d\n"
 		".Os",
 		m->date,
-		m->title, 
+		m->title,
 		m->section
 		); }
 
@@ -108,7 +108,7 @@ man_codespan(struct buf *ob, struct buf *text, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	BUFPUTSL(ob, ".Bd -literal\n");
 	if (text) man_text_escape(ob, text->data, text->size);
-	BUFPUTSL(ob, ".Ed"); 
+	BUFPUTSL(ob, ".Ed");
 	return 1; }
 
 static void
@@ -116,7 +116,7 @@ man_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
 	switch(level) {
 		case 1:
-			BUFPUTSL(ob,".Sh "); 
+			BUFPUTSL(ob,".Sh ");
 			break;
 		case 2:
 			BUFPUTSL(ob, ".Ss ");
