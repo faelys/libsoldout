@@ -310,7 +310,7 @@ parse_inline(struct buf *ob, struct render *rndr, char *data, size_t size) {
 		end = action(ob, rndr, data + i, i, size - i);
 		if (!end) /* no action from the callback */
 			end = i + 1;
-		else { 
+		else {
 			i += end;
 			end = i; } } }
 
@@ -419,7 +419,7 @@ parse_emph2(struct buf *ob, struct render *rndr,
 	int r;
 
 	if (!rndr->make.double_emphasis) return 0;
-	
+
 	while (i < size) {
 		len = find_emph_char(data + i, size - i, c);
 		if (!len) return 0;
@@ -636,7 +636,7 @@ get_link_inline(struct buf *link, struct buf *title, char *data, size_t size) {
 
 		/* skipping whitespaces after title */
 		title_e = size - 1;
-		while (title_e > title_b && (data[title_e] == ' ' 
+		while (title_e > title_b && (data[title_e] == ' '
 		|| data[title_e] == '\t' || data[title_e] == '\n'))
 			title_e -= 1;
 
