@@ -40,7 +40,7 @@ struct buf {
  * MACROS *
  **********/
 
-/* CONST_BUF • global buffer from a string litteral */
+/* CONST_BUF • global buffer from a string literal */
 #define CONST_BUF(name, string) \
 	static struct buf name = { string, sizeof string -1, sizeof string }
 
@@ -50,9 +50,9 @@ struct buf {
 	struct buf name = { strname, strlen(strname) }
 
 
-/* BUFPUTSL • optimized bufputs of a string litteral */
-#define BUFPUTSL(output, litteral) \
-	bufput(output, litteral, sizeof litteral - 1)
+/* BUFPUTSL • optimized bufputs of a string literal */
+#define BUFPUTSL(output, literal) \
+	bufput(output, literal, sizeof literal - 1)
 
 
 /***********************
@@ -107,7 +107,7 @@ struct buf *
 bufnew(size_t)
 	BUF_ALLOCATOR;
 
-/* bufnullterm • NULL-termination of the string array (making a C-string) */
+/* bufnullterm • NUL-termination of the string array (making a C-string) */
 void
 bufnullterm(struct buf *);
 
@@ -120,7 +120,7 @@ bufprintf(struct buf *, const char *, ...)
 void
 bufput(struct buf *, const void*, size_t);
 
-/* bufputs • appends a NULL-terminated string to a buffer */
+/* bufputs • appends a NUL-terminated string to a buffer */
 void
 bufputs(struct buf *, const char*);
 

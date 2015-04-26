@@ -111,7 +111,7 @@ The most common functions to append data into buffers are:
 - `bufput()` which is similar to `memcpy()`,
 - `bufputs()` which appends a zero-terminated string to a buffer,
 - `BUFPUTSL()` which is a macro to replace `bufputs()` when using string
-  litterals, because then the data size is known at compile-time, this
+  literals, because then the data size is known at compile-time, this
   saves a call to `strlen()`,
 - `bufputc()` for single-character appends.
 
@@ -191,7 +191,7 @@ parser, **not** for the renderer*. It means that my parser passes around
 blindy the pointer which contains data you know about, in case you need to
 store an internal state or whatever. I have not found anything to put in
 this pointer in my example renderers, so it is set to NULL in the structure
-and never look at in the callbacks.
+and the callbacks don't use it.
 
 `emph_chars` is a zero-terminated string which contains the set of
 characters that trigger emphasis. In regular markdown, emphasis is only
@@ -282,7 +282,7 @@ called for that specific row with `MKD_CELL_HEAD` flag.
 Alignment is defined on a per-cell basis, and specified by a colon (`:`) at
 the very beginning of the input span (i.e. directly after the `|`
 separator, or as the first character on the line) and/or at the very end of
-it (i.e.  directly before the separator, or as the last character on the
+it (i.e. directly before the separator, or as the last character on the
 line). A cell with such a leading colon only is left-aligned
 (`MKD_CELL_ALIGN_LEFT`), one with a trailing colon only is right-aligned
 (`MKD_CELL_ALIGN_RIGHT`), and one with both is centered
@@ -300,7 +300,7 @@ included, both to illustrate how to write a set of renderer functions and
 to allow anybody who do not need special extensions to use libsoldout
 without hassle.
 
-All the examples provided here comme with two flavors, `_html` producing
+All the examples provided here come with two flavors, `_html` producing
 HTML code (self-closing tags are rendered like this: `<hr>`), and `_xhtml`
 producing XHTML code (self-closing tags like `<hr />`).
 
@@ -324,7 +324,7 @@ original markdown syntax.
 
 Here is a list of all extensions included in these renderers:
 
- - image size specitication, by appending " =(width)x(height)" to the link,
+ - image size specification, by appending " =(width)x(height)" to the link,
  - pseudo-protocols in links:
 	* abbr:_description_ for `<abbr title="`_description_`">...</abbr>`
 	* class:_name_ for `<span class="`_name_`">...</span>`
@@ -371,7 +371,7 @@ Follows an example use of all of them:
 Internals
 ---------
 
-Here I  explain the structure of `markdown.c`, and how this parser works. I
+Here I explain the structure of `markdown.c`, and how this parser works. I
 use a logical order, which is roughly chronological, which means going
 roughly from the bottom of the file to the top.
 
@@ -480,7 +480,7 @@ the second pass. Keeping both first and second passes yields the same
 behaviour as `Markdown.pl` v1.0.1.
 
 I have to admit I do not really care that much about these differences, as
-I do not intend to use personnally any inline HTML, because I will either
+I do not intend to use personally any inline HTML, because I will either
 parse unsafe input, then inline HTML is too dangerous, or my own input,
 but I use Markdown when I'm not confident in my HTML correctness, so it
 would be useless to include HTML in my input. However I am aware this
@@ -508,7 +508,7 @@ this character : it can either be a part of a link or an image, and then it
 can be inline or reference style or a shortcut reference style.
 
 Emphasis is another interesting piece of code, in that when encountering an
-emphasis character, it first looks whether it is single or double or timple
+emphasis character, it first looks whether it is single or double or triple
 emphasis, an then goes forward looking for a match.
 
 
@@ -580,7 +580,7 @@ So I added a `work` dynamic array pointer, which a special meaning to the
 active working buffers that are still in use, and the remaining members up
 to `asize` are allocated but no longer used working buffers.
 
-When a function needs a working buffer, it firs compare `size` to `asize`.
+When a function needs a working buffer, it first compare `size` to `asize`.
 When they are equal, it means there is no available working buffer, and a
 new one is created and appended (`push`ed) to the array. Otherwise it
 increases `size` and takes the already-allocated buffer as its working
