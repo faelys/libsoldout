@@ -404,14 +404,14 @@ discount_link(struct buf *ob, struct buf *link, struct buf *title,
 		BUFPUTSL(ob, "</span>");
 		return 1; }
 	else if (link->size > 3 && !strncasecmp(link->data, "id:", 3)) {
-		BUFPUTSL(ob, "<a id=\"");
+		BUFPUTSL(ob, "<span id=\"");
 		lus_attr_escape(ob, link->data + 3, link->size - 3);
 		BUFPUTSL(ob, "\">");
 		bufput(ob, content->data, content->size);
 		BUFPUTSL(ob, "</span>");
 		return 1; }
 	else if (link->size > 4 && !strncasecmp(link->data, "raw:", 4)) {
-		lus_attr_escape(ob, link->data + 4, link->size - 4);
+		bufput(ob, link->data + 4, link->size - 4);
 		return 1; }
 	return rndr_link(ob, link, title, content, opaque); }
 
