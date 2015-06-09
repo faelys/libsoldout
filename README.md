@@ -328,7 +328,7 @@ Here is a list of all extensions included in these renderers:
  - pseudo-protocols in links:
 	* abbr:_description_ for `<abbr title="`_description_`">...</abbr>`
 	* class:_name_ for `<span class="`_name_`">...</span>`
-	* id:_name_ for `<a id="`_name_`>...</a>`
+	* id:_name_ for `<span id="`_name_`">...</span>`
 	* raw:_text_ for verbatim unprocessed _text_ inclusion
  - class blocks: blockquotes beginning with %_class_% will be rendered as a
    `div` of the given class(es).

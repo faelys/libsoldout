@@ -41,7 +41,7 @@ usage(FILE *out, const char *name) {
 	fprintf(out, "Usage: %s [-h | -x] [-d | -m | -n] [input-file]\n\n",
 	    name);
 	fprintf(out, "\t-d, --discount\n"
-	    "\t\tEnable some Discount extensions (image size specficiation,\n"
+	    "\t\tEnable some Discount extensions (image size specification,\n"
 	    "\t\tclass blocks and 'abbr:', 'class:', 'id:' and 'raw:'\n"
 	    "\t\tpseudo-protocols)\n"
 	    "\t-H, --html\n"
