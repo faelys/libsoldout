@@ -14,7 +14,7 @@ Introduction
 
 For some projects of mine, I wanted a lightweight C library that can parse
 John Gruber's [markdown](http://daringfireball.net/projects/markdown/)
-format into whatever I want, and that is easily extendable.
+format into whatever I want, and that is easily extensible.
 
 The only C implementations of markdown that I know of are [Discount]
 (http://www.pell.portland.or.us/~orc/Code/markdown/) and [PEG-markdown]
@@ -63,11 +63,11 @@ When using a `struct buf` as an output buffer, it is useful to pre-allocate
 the memory area before filling it, so I added an `asize` member containing
 the allocated size of the memory pointed by `data`.
 
-When accumulating data in a growing memory area, there is a tradeoff
+When accumulating data in a growing memory area, there is a trade-off
 between memory usage and speed: the more bytes are added each time, the
 less `realloc()` is called, which means potentially less `memcpy()` to a new
 zone, so a faster code, but more memory being allocated for nothing. To
-set the tradeoff on a case-by-case basis, there is a `unit` member in the
+set the trade-off on a case-by-case basis, there is a `unit` member in the
 structure: when more memory is needed, `asize` is augmented by a multiple
 of `unit`. So the larger `unit`, the more memory is allocated at once, the
 less `realloc()` is called.
@@ -177,7 +177,7 @@ The last argument of a renderer function is always an opaque pointer, which
 is equal to the `opaque` member of `struct mkd_renderer`. The name
 "opaque" might not be well-chosen, but it means a pointer *opaque for the
 parser, **not** for the renderer*. It means that my parser passes around
-blindy the pointer which contains data you know about, in case you need to
+blindly the pointer which contains data you know about, in case you need to
 store an internal state or whatever. I have not found anything to put in
 this pointer in my example renderers, so it is set to NULL in the structure
 and the callbacks don't use it.
@@ -241,9 +241,9 @@ like this:
 	------------|:-------------:|--------------:|:--------------
 	first line  |   centered    | right-aligned | left-aligned
 	second line |   centered    |:   centered  :| left-aligned
-	third line  |: left-aglined | right-aligned | right-aligned :
+	third line  |: left-aligned | right-aligned | right-aligned :
 	column-separator | don't need | to be | aligned in the source
-	| extra speratators | are allowed | at both ends | of the line |
+	| extra spectators | are allowed | at both ends | of the line |
 	| correct number of cell per row is not enforced |
 	| pipe characters can be embedded in cell text by escaping it: \| |
 
@@ -450,7 +450,7 @@ handing the result to the block renderer callback.
 
 Of interest is the `parse_htmlblock()` function: according to Markdown
 webpage, HTML blocks must be delimited by unindented block-level tags,
-with the opening tag being preceeded by a blank line, and the closing tag
+with the opening tag being preceded by a blank line, and the closing tag
 being followed by a blank line.
 
 When looking at the reference implementation, `Markdown.pl`, it appeared
@@ -459,7 +459,7 @@ the closing tag can be indented, it only has to be at the end of line and
 followed by a blank line.
 
 But when looking at the test suite, it appeared that a single line
-`<div>foo</div>` surrounded by blank lines should be recorgnized as a
+`<div>foo</div>` surrounded by blank lines should be recognized as a
 block, regardless of the "matching" unindented closing tag at the end of
 the document. This meant that only the laxist approach should be used.
 
@@ -501,7 +501,7 @@ emphasis character, it first looks whether it is single or double or triple
 emphasis, an then goes forward looking for a match.
 
 
-### Proof that recursion depth is bount by `max_work_stack`
+### Proof that recursion depth is bounded by `max_work_stack`
 
 The core of the code here is that when entering the functions
 `parse_inline()` and `parse_block()`, if the current size of the working

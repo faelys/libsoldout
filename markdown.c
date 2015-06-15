@@ -377,7 +377,7 @@ find_emph_char(char *data, size_t size, char c) {
 	return 0; }
 
 
-/* parse_emph1 • parsing single emphase */
+/* parse_emph1 • parsing single emphasis */
 /* closed by a symbol not preceded by whitespace and not followed by symbol */
 static size_t
 parse_emph1(struct buf *ob, struct render *rndr,
@@ -410,7 +410,7 @@ parse_emph1(struct buf *ob, struct render *rndr,
 	return 0; }
 
 
-/* parse_emph2 • parsing single emphase */
+/* parse_emph2 • parsing single emphasis */
 static size_t
 parse_emph2(struct buf *ob, struct render *rndr,
 			char *data, size_t size, char c) {
@@ -437,7 +437,7 @@ parse_emph2(struct buf *ob, struct render *rndr,
 	return 0; }
 
 
-/* parse_emph3 • parsing single emphase */
+/* parse_emph3 • parsing single emphasis */
 /* finds the first closing tag, and delegates to the other emph */
 static size_t
 parse_emph3(struct buf *ob, struct render *rndr,
@@ -562,7 +562,7 @@ char_escape(struct buf *ob, struct render *rndr,
 
 
 /* char_entity • '&' escaped when it doesn't belong to an entity */
-/* valid entities are assumed to be anything mathing &#?[A-Za-z0-9]+; */
+/* valid entities are assumed to be anything matching &#?[A-Za-z0-9]+; */
 static size_t
 char_entity(struct buf *ob, struct render *rndr,
 				char *data, size_t offset, size_t size) {
@@ -764,7 +764,7 @@ char_link(struct buf *ob, struct render *rndr,
 			id_data = data + 1;
 			id_size = txt_e - 1; }
 		else {
-			/* explici id - between brackets */
+			/* explicit id - between brackets */
 			id_data = data + i + 1;
 			id_size = id_end - (i + 1); }
 
@@ -863,7 +863,7 @@ is_headerline(char *data, size_t size) {
 	return 0; }
 
 
-/* is_table_sep • returns wether there is a table separator at the given pos */
+/* is_table_sep • returns whether there is a table separator at the given pos */
 static int
 is_table_sep(char *data, size_t pos) {
 	return data[pos] == '|' && (pos == 0 || data[pos - 1] != '\\'); }
@@ -913,7 +913,7 @@ prefix_quote(char *data, size_t size) {
 	else return 0; }
 
 
-/* prefix_code • returns prefix length for block code*/
+/* prefix_code • returns prefix length for block code */
 static size_t
 prefix_code(char *data, size_t size) {
 	if (size > 0 && data[0] == '\t') return 1;
