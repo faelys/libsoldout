@@ -1,7 +1,7 @@
 **Note**: this project is considered mature software, so there isn't much
 going on in terms of code changes. However it's still actively maintained,
 and I will consider bug reports or feature requests usually in a matter
-of days, or at works within a few weeks.
+of days, or at worst within a few weeks.
 
 The reference repository is based on [fossil][] and available at
 <http://fossil.instinctive.eu/libsoldout>.
