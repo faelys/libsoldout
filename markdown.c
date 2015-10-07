@@ -264,7 +264,7 @@ tag_length(char *data, size_t size, enum mkd_autolink *autolink) {
 		j = i;
 		while (i < size && data[i] != '>' && data[i] != '\''
 		&& data[i] != '"' && data[i] != ' ' && data[i] != '\t'
-		&& data[i] != '\t')
+		&& data[i] != '\n')
 			i += 1;
 		if (i >= size) return 0;
 		if (i > j && data[i] == '>') return i + 1;
