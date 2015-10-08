@@ -252,7 +252,7 @@ bufset(struct buf **dest, struct buf *src) {
 /* bufslurp • removes a given number of bytes from the head of the array */
 void
 bufslurp(struct buf *buf, size_t len) {
-	if (!buf || !buf->unit || len <= 0) return;
+	if (!buf || !buf->unit || !len) return;
 	if (len >= buf->size) {
 		buf->size = 0;
 		return; }
