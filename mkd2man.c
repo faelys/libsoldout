@@ -238,8 +238,8 @@ main(int argc, char **argv) {
 	struct stat st;
 
 	struct option longopts[] = {
-		{ "date",	no_argument,		0, 	'd' },
-		{ "help",	required_argument,	0,	'h' },
+		{ "date",	required_argument,	0, 	'd' },
+		{ "help",	no_argument,		0,	'h' },
 		{ "section",	required_argument,	0,	's' },
 		{ "title",	required_argument,	0,	't' },
 		{ 0,		0,			0,	0}
