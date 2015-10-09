@@ -51,11 +51,11 @@ usage(FILE *out, const char *name) {
 	    "\t-t, --title\n"
 	    "\t\tSet the title of the manpage (default: filename)\n"); }
 
-static struct metadata {
+struct metadata {
 	char *title;
 	char *date;
 	int section;
-} man_metadata;
+};
 
 static void
 man_text_escape(struct buf *ob, char *src, size_t size) {
@@ -236,6 +236,7 @@ main(int argc, char **argv) {
 	time_t ttm;
 	struct tm *tm;
 	struct stat st;
+	struct metadata man_metadata;
 
 	struct option longopts[] = {
 		{ "date",	no_argument,		0, 	'd' },
