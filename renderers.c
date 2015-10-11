@@ -336,10 +336,11 @@ const struct mkd_renderer mkd_xhtml = {
 static int
 print_link_wxh(struct buf *ob, struct buf *link) {
 	size_t eq, ex, end;
+	if (link->size < 1) return 0;
 	eq = link->size - 1;
 	while (eq > 0 && (link->data[eq - 1] != ' ' || link->data[eq] != '='))
 		eq -= 1;
-	if (eq <= 0) return 0;
+	if (!eq) return 0;
 	ex = eq + 1;
 	while (ex < link->size
 	&& link->data[ex] >= '0' && link->data[ex] <= '9')
