@@ -145,9 +145,9 @@ rndr_link(struct buf *ob, struct buf *link, struct buf *title,
 static void
 rndr_list(struct buf *ob, struct buf *text, int flags, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
-	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
+	bufput(ob, (flags & MKD_LIST_ORDERED) ? "<ol>\n" : "<ul>\n", 5);
 	if (text) bufput(ob, text->data, text->size);
-	bufput(ob, flags & MKD_LIST_ORDERED ? "</ol>\n" : "</ul>\n", 6); }
+	bufput(ob, (flags & MKD_LIST_ORDERED) ? "</ol>\n" : "</ul>\n", 6); }
 
 static void
 rndr_listitem(struct buf *ob, struct buf *text, int flags, void *opaque) {
