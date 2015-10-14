@@ -15,7 +15,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 DEPDIR=depends
-CFLAGS=-c -g -O3 -Wall -Werror -fPIC
+CFLAGS=-c -g -O3 -Wall -Werror -std=c99 -fPIC
 LDFLAGS=-g -O3 -Wall -Werror
 CC=gcc
 
