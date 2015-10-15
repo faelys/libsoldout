@@ -71,7 +71,7 @@ struct buf {
 /* BUF_PRINTF_LIKE • marks the function as behaving like printf */
 #ifdef __GNUC__
 #define BUF_PRINTF_LIKE(format_index, first_variadic_index) \
-	__attribute__ ((format (printf, format_index, first_variadic_index)));
+	__attribute__ ((format (printf, format_index, first_variadic_index)))
 #else
 #define BUF_PRINTF_LIKE(format_index, first_variadic_index)
 #endif
