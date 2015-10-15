@@ -229,8 +229,9 @@ int
 main(int argc, char **argv) {
 	struct buf *ib, *ob;
 	size_t ret;
+	size_t i;
 	FILE *in = stdin;
-	int ch, argerr, help, i;
+	int ch, argerr, help;
 	char *tmp;
 	char datebuf[64];
 	time_t ttm;
