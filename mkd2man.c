@@ -40,8 +40,8 @@
 
 void
 usage(FILE *out, const char *name) {
-	fprintf(out, "Usage: %s [-h] [-d <date>] [-s <section> ] [ -t <title> ] [input-file]\n\n",
-	    name);
+	fprintf(out, "Usage: %s [-h] [-d <date>] [-s <section> ] "
+	    "[ -t <title> ] [input-file]\n\n", name);
 	fprintf(out, "\t-d, --date\n"
 	    "\t\tSet the date of the manpage (default: now),\n"
 	    "\t-h, --help\n"
@@ -266,7 +266,8 @@ main(int argc, char **argv) {
 				    strspn(optarg, "123456789") != 1) {
 					argerr = 1;
 					break; }
-				man_metadata.section = (int)strtol(optarg, (char **)NULL, 10);
+				man_metadata.section = (int)strtol(optarg,
+				    (char **)NULL, 10);
 				break;
 			case 't':
 				man_metadata.title = optarg;
