@@ -27,7 +27,7 @@
 
 /* lus_attr_escape • copy the buffer entity-escaping '<', '>', '&' and '"' */
 void
-lus_attr_escape(struct buf *ob, char *src, size_t size) {
+lus_attr_escape(struct buf *ob, const char *src, size_t size) {
 	size_t  i = 0, org;
 	while (i < size) {
 		/* copying directly unescaped characters */
@@ -48,7 +48,7 @@ lus_attr_escape(struct buf *ob, char *src, size_t size) {
 
 /* lus_body_escape • copy the buffer entity-escaping '<', '>' and '&' */
 void
-lus_body_escape(struct buf *ob, char *src, size_t size) {
+lus_body_escape(struct buf *ob, const char *src, size_t size) {
 	size_t  i = 0, org;
 	while (i < size) {
 		/* copying directly unescaped characters */
