@@ -159,6 +159,19 @@ vbufprintf(struct buf *, const char*, va_list);
 
 #endif /* def BUFFER_STDARG */
 
+
+/********************
+ * GLOBAL VARIABLES *
+ ********************/
+
+#ifdef BUFFER_STATS
+
+extern long buffer_stat_nb;
+extern size_t buffer_stat_alloc_bytes;
+
+#endif /* def BUFFER_STATS */
+
+
 #endif /* ndef LITHIUM_BUFFER_H */
 
 /* vim: set filetype=c: */
