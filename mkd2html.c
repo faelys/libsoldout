@@ -29,12 +29,6 @@
 #define OUTPUT_UNIT 64
 
 
-/* buffer statistics, to track some memleaks */
-extern long buffer_stat_nb;
-extern size_t buffer_stat_alloc_bytes;
-
-
-
 /* usage • print the option list */
 void
 usage(FILE *out, const char *name) {
@@ -149,6 +143,7 @@ main(int argc, char **argv) {
 	bufrelease(ib);
 	bufrelease(ob);
 
+#ifdef BUFFER_STATS
 	/* memory checks */
 	if (buffer_stat_nb)
 		fprintf(stderr, "Warning: %ld buffers still active\n",
@@ -156,6 +151,7 @@ main(int argc, char **argv) {
 	if (buffer_stat_alloc_bytes)
 		fprintf(stderr, "Warning: %zu bytes still allocated\n",
 				buffer_stat_alloc_bytes);
+#endif
 	return 0; }
 
 /* vim: set filetype=c: */

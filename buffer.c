@@ -16,13 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * COMPILE TIME OPTIONS
- *
- * BUFFER_STATS • if defined, stats are kept about memory usage
- */
-#define BUFFER_STATS
-
 #define BUFFER_STDARG
 
 #include "buffer.h"
@@ -35,6 +28,12 @@
 /********************
  * GLOBAL VARIABLES *
  ********************/
+
+/*
+ * COMPILE TIME OPTIONS
+ *
+ * BUFFER_STATS • if defined, stats are kept about memory usage
+ */
 
 #ifdef BUFFER_STATS
 long buffer_stat_nb = 0;
