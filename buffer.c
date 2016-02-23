@@ -171,7 +171,6 @@ bufnew(size_t unit) {
 void
 bufnullterm(struct buf *buf) {
 	if (!buf || !buf->unit) return;
-	if (buf->size < buf->asize && buf->data[buf->size] == 0) return;
 	if (buf->size + 1 <= buf->asize || bufgrow(buf, buf->size + 1))
 		buf->data[buf->size] = 0; }
 
