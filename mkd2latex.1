@@ -1,0 +1,45 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" (C) Copyright 2009 Natasha Porté <natbsd@instinctive.eu>,
+.\"
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH MKD2LATEX 1 2009
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.AM
+.SH NAME
+mkd2latex \- converts a markdown document into LaTex
+.SH SYNOPSIS
+.B mkd2latex
+.RI [input-file]
+.SH DESCRIPTION
+.B mkd2latex
+converts a markdown document into LaTex. The program was
+meant as an example of programming with the markdown 
+parser implemented in libsoldout, nonetheless it's usable
+in real life applications as LaTex generator from 
+markdown documents.
+.SH OPTIONS
+.SP
+.B mk2latex
+accepts a file name as a single argument. If not argument is provided
+the program expects input to come from stdin
+
+.PP
+.SH COPYRIGHT
+  Copyright \(co 2009 Natasha Porte' <natbsd@instinctive.eu>
+  Manual Page written by Massimo Manghi <mxmanghi@apache.org>
+.SH SEE ALSO
+.BR markdown (3)
+.br
