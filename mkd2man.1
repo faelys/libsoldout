@@ -50,7 +50,10 @@ format
 .Pc .
 If unspecified,
 .Nm
-uses current date.
+uses the file modification date or current date
+if reading from standard input or if
+.Xr stat 2
+fails.
 .It Fl h , Fl Fl help
 display help text.
 .It Fl s , Fl Fl section
