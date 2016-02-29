@@ -1,45 +1,48 @@
-.\"                                      Hey, EMACS: -*- nroff -*-
-.\" (C) Copyright 2009 Natasha Porté <natbsd@instinctive.eu>,
 .\"
-.\" First parameter, NAME, should be all caps
-.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
-.\" other parameters are allowed: see man(7), man(1)
-.TH MKD2LATEX 1 2009
-.\" Please adjust this date whenever revising the manpage.
+.\" Copyright (c) 2009 - 2016 Natacha Porté <natacha@instinctive.eu>
 .\"
-.\" Some roff macros, for reference:
-.\" .nh        disable hyphenation
-.\" .hy        enable hyphenation
-.\" .ad l      left justify
-.\" .ad b      justify to both left and right margins
-.\" .nf        disable filling
-.\" .fi        enable filling
-.\" .br        insert line break
-.\" .sp <n>    insert n+1 empty lines
-.\" for manpage-specific macros, see man(7)
-.AM
-.SH NAME
-mkd2latex \- converts a markdown document into LaTex
-.SH SYNOPSIS
-.B mkd2latex
-.RI [input-file]
-.SH DESCRIPTION
-.B mkd2latex
-converts a markdown document into LaTex. The program was
-meant as an example of programming with the markdown 
-parser implemented in libsoldout, nonetheless it's usable
-in real life applications as LaTex generator from 
-markdown documents.
-.SH OPTIONS
-.SP
-.B mk2latex
-accepts a file name as a single argument. If not argument is provided
-the program expects input to come from stdin
-
-.PP
-.SH COPYRIGHT
-  Copyright \(co 2009 Natasha Porte' <natbsd@instinctive.eu>
-  Manual Page written by Massimo Manghi <mxmanghi@apache.org>
-.SH SEE ALSO
-.BR markdown (3)
-.br
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd February 29, 2016
+.Dt MKD2LATEX 1
+.Os
+.Sh NAME
+.Nm mkd2latex
+.Nd convert a markdown document into LaTex
+.Sh SYNOPSIS
+.Nm
+.Ar file
+.Sh DESCRIPTION
+.Nm
+utility reads
+.Ar file
+and generates LaTex input from markdown source. If unspecified,
+.Ar file
+is taken to be standard input.
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr mkd2html 1 ,
+.Xr mkd2man 1
+.Sh AUTHORS
+.An -nosplit
+.Nm
+was written by
+.An Natasha Qo Kerensikova Qc Porte Aq Mt natacha@instinctive.eu ,
+.An Baptiste Daroussin Aq Mt bapt@freebsd.org
+and
+.An Michael Huang .
+Manual page was originally written by
+.An Massimo Manghi Aq Mt mxmanghi@apache.org ,
+and rewritten to mdoc format by
+.An Svyatoslav Mishyn Aq Mt juef@openmailbox.org .
