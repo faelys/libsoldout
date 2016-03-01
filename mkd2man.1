@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd February 29, 2016
+.Dd March 1, 2016
 .Dt MKD2MAN 1
 .Os
 .Sh NAME
@@ -21,8 +21,8 @@
 .Nd convert a markdown document into an mdoc manual page
 .Sh SYNOPSIS
 .Nm
-.Op Fl d Ar date
 .Op Fl h
+.Op Fl d Ar date
 .Op Fl s Ar section
 .Op Fl t Ar title
 .Ar file
@@ -51,7 +51,7 @@ format
 If unspecified,
 .Nm
 uses the file modification date or current date
-if reading from standard input or if
+if reading is from standard input or if
 .Xr stat 2
 fails.
 .It Fl h , Fl Fl help
@@ -74,7 +74,7 @@ If unspecified,
 .Nm
 uses the suffix-stripped filename part of
 .Ar file .
-When reading from stdin the title should be specified.
+When reading is from stdin the title should be specified.
 .El
 .Sh EXIT STATUS
 .Ex -std
