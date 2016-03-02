@@ -93,20 +93,19 @@ to have the output looking like the input data.
 .Pp
 libsoldout supports PHP-Markdown-like tables.
 It uses the following flags:
-.Pp
-.Fd MKD_CELL_ALIGN_DEFAULT
-.Fd MKD_CELL_ALIGN_LEFT
-.Fd MKD_CELL_ALIGN_RIGHT
-.Fd MKD_CELL_ALIGN_CENTER
-.Fd MKD_CELL_ALIGN_MASK
-.Fd MKD_CELL_HEAD
+.Dv MKD_CELL_ALIGN_DEFAULT ,
+.Dv MKD_CELL_ALIGN_LEFT ,
+.Dv MKD_CELL_ALIGN_RIGHT ,
+.Dv MKD_CELL_ALIGN_CENTER ,
+.Dv MKD_CELL_ALIGN_MASK ,
+.Dv MKD_CELL_HEAD
 in these function callbacks:
 .Va table_cell
 and
 .Va table_row .
 .Pp
-.Fd MKD_LIST_ORDERED
-.Fd MKD_LI_BLOCK
+.Dv MKD_LIST_ORDERED ,
+.Dv MKD_LI_BLOCK
 are used as flags in these function callbacks:
 .Va list
 and
