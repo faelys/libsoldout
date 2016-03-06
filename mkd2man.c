@@ -286,8 +286,8 @@ main(int argc, char **argv) {
 		in = fopen(argv[0], "r");
 		if (!in) {
 			fprintf(stderr,"Unable to open input file \"%s\": %s\n",
-				argv[1], strerror(errno));
-			return 1; } }
+				argv[0], strerror(errno));
+			return EXIT_FAILURE; } }
 
 	if (!man_metadata.date) {
 			if (in == stdin || stat(argv[0], &st) == -1) {
@@ -302,7 +302,7 @@ main(int argc, char **argv) {
 	if (in == stdin && !man_metadata.title) {
 		fprintf(stderr, "When reading from stdin the title should be "
 		    "specified is expected\n");
-		return 1; }
+		return EXIT_FAILURE; }
 
 	if (!man_metadata.title) {
 		tmp = strrchr(argv[0], '/');
@@ -345,6 +345,6 @@ main(int argc, char **argv) {
 	/* cleanup */
 	bufrelease(ib);
 	bufrelease(ob);
-	return 0; }
+	return EXIT_SUCCESS; }
 
 /* vim: set filetype=c: */
