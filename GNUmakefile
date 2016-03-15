@@ -14,17 +14,22 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-DEPDIR=depends
-CFLAGS=-c -g -O3 -Wall -Werror -std=c99 -fPIC
-LDFLAGS=-g -O3 -Wall -Werror
-CC=gcc
+DEPDIR	 = depends
 
-all:		libsoldout.so mkd2html mkd2latex mkd2man
+AR	?= ar
+CC	?= gcc
+CFLAGS	?= -g -O3 -Wall -Werror
+LDFLAGS	?=
+
+all:		libsoldout.a libsoldout.so mkd2html mkd2latex mkd2man
 
 .PHONY:		all clean
 
 
 # libraries
+
+libsoldout.a:	markdown.o array.o buffer.o renderers.o
+	$(AR) rs $@ $^
 
 libsoldout.so:	libsoldout.so.1
 	ln -s $^ $@
@@ -52,7 +57,7 @@ benchmark:	benchmark.o libsoldout.so
 
 clean:
 	rm -f *.o
-	rm -f libsoldout.so libsoldout.so.*
+	rm -f libsoldout.a libsoldout.so libsoldout.so.*
 	rm -f mkd2html mkd2latex mkd2man benchmark
 	rm -rf $(DEPDIR)
 
@@ -67,9 +72,9 @@ include $(wildcard $(DEPDIR)/*.d)
 %.o:	%.c
 	@mkdir -p $(DEPDIR)
 	@$(CC) -MM $< > $(DEPDIR)/$*.d
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $@ $<
 
 %.o:	%.m
 	@mkdir -p $(DEPDIR)
 	@$(CC) -MM $< > depends/$*.d
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $@ $<
