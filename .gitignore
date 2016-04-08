@@ -3,6 +3,7 @@
 *.so
 *.so.*
 
+amalgamation/
 depends/
 mkd2html
 mkd2latex
