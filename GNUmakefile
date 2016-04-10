@@ -23,7 +23,12 @@ LDFLAGS	?=
 
 all:		libsoldout.a libsoldout.so mkd2html mkd2latex mkd2man
 
-.PHONY:		all clean
+.PHONY:		all amal clean
+
+
+# amalgamation
+amal:
+	@./make-amal
 
 
 # libraries
