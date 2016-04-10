@@ -1,4 +1,5 @@
 #!/bin/sh
+# make-amal, generate the libsoldout amalgamation
 #
 # Copyright (c) 2016 Svyatoslav Mishyn <juef@openmailbox.org>
 #
