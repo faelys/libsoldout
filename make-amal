@@ -4,7 +4,8 @@ outputsource() {
 	sed	-e '/#include.*\".*\"/d'	\
 		-e '/#define.*BUFFER_STDARG/d'	\
 		-e 's/\/\*.*\*\///'		\
-		-e '/^[ \t]*\/\*/,/\*\//d' $1
+		-e '/^[ \t]*\/\*/,/\*\//d'	\
+		-e 's/[ \t]*$//' $1
 }
 
 header="/* Amalgamation version of libsoldout. See https://github.com/faelys/libsoldout */"
@@ -13,7 +14,7 @@ license=`sed -n -e '3,17p' markdown.c`
 mkdir -p amalgamation
 
 
-# soldout.h {
+# soldout.h
 
 echo "$header" > amalgamation/soldout.h
 exec >> amalgamation/soldout.h
@@ -33,10 +34,8 @@ done
 echo
 echo '#endif /* SOLDOUT_H */'
 
-# soldout.h }
 
-
-# soldout.c {
+# soldout.c
 
 echo "$header" > amalgamation/soldout.c
 exec >> amalgamation/soldout.c
@@ -49,12 +48,4 @@ echo
 
 for f in array.c buffer.c markdown.c renderers.c; do
 	outputsource $f
-done
-
-# soldout.c }
-
-
-# fix trailing whitespace
-for f in amalgamation/soldout.h amalgamation/soldout.c; do
-	sed -i -e 's/[ \t]*$//' $f
 done
