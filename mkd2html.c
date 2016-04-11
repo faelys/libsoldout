@@ -30,7 +30,7 @@
 
 
 /* usage • print the option list */
-void
+static void
 usage(FILE *out, const char *name) {
 	fprintf(out, "Usage: %s [-h | -x] [-d | -m | -n] [input-file]\n\n",
 	    name);

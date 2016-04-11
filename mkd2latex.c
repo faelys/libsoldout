@@ -162,7 +162,7 @@ static const char *entity2latex(const struct buf *entity) {
  * MARKDOWN TO LATEX RENDERER *
  ******************************/
 
-void
+static void
 latex_text_escape(struct buf *ob, char *src, size_t size) {
 	size_t  i = 0, org;
 	while (i < size) {
@@ -358,7 +358,7 @@ latex_normal_text(struct buf *ob, struct buf *text, void *opaque) {
 
 
 /* renderer structure */
-struct mkd_renderer to_latex = {
+static struct mkd_renderer to_latex = {
 	/* document-level callbacks */
 	latex_prolog,
 	latex_epilog,

@@ -38,7 +38,7 @@
 
 /* usage • print the option list */
 
-void
+static void
 usage(FILE *out, const char *name) {
 	fprintf(out, "Usage: %s [-h] [-d <date>] [-s <section> ] "
 	    "[ -t <title> ] [input-file]\n\n", name);
@@ -180,7 +180,7 @@ man_normal_text(struct buf *ob, struct buf *text, void *opaque) {
 
 
 /* renderer structure */
-struct mkd_renderer to_man = {
+static struct mkd_renderer to_man = {
 	/* document-level callbacks */
 	man_prolog,
 	man_epilog,
