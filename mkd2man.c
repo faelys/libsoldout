@@ -180,7 +180,7 @@ man_normal_text(struct buf *ob, struct buf *text, void *opaque) {
 
 
 /* renderer structure */
-struct mkd_renderer to_man = {
+static struct mkd_renderer to_man = {
 	/* document-level callbacks */
 	man_prolog,
 	man_epilog,

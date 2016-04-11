@@ -358,7 +358,7 @@ latex_normal_text(struct buf *ob, struct buf *text, void *opaque) {
 
 
 /* renderer structure */
-struct mkd_renderer to_latex = {
+static struct mkd_renderer to_latex = {
 	/* document-level callbacks */
 	latex_prolog,
 	latex_epilog,
