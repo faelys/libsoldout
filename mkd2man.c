@@ -38,7 +38,7 @@
 
 /* usage • print the option list */
 
-void
+static void
 usage(FILE *out, const char *name) {
 	fprintf(out, "Usage: %s [-h] [-d <date>] [-s <section> ] "
 	    "[ -t <title> ] [input-file]\n\n", name);
