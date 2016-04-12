@@ -19,10 +19,10 @@
 # PERFORMANCE OF THIS SOFTWARE.
 
 outputsource() {
-	sed	-e '/#include.*\".*\"/d'	\
-		-e 's/\/\*.*\*\///'		\
-		-e '/^[ \t]*\/\*/,/\*\//d'	\
-		-e 's/[ \t]*$//' $1
+	sed	-e '/#include.*\".*\"/d'		\
+		-e 's/\/\*.*\*\///'			\
+		-e '/^[ 	]*\/\*/,/\*\//d'	\
+		-e 's/[ 	]*$//' $1
 }
 
 header="/* Amalgamation version of libsoldout. See https://github.com/faelys/libsoldout */"
