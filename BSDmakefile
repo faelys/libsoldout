@@ -59,6 +59,19 @@ mkd2man:	mkd2man.o libsoldout.so
 
 # Housekeeping
 
+GNUmakefile:	BSDmakefile
+	@sed	-e 's/^\(all:.*\)GNUmakefile /\1/'			\
+		-e 's/\(rm .*\)GNUmakefile /\1/'			\
+		-e '/^GNUmakefile:/,/^$$/d'				\
+		-e 's/\$$(\.ALLSRC)/$$^/g'				\
+		-e 's/\$$(\.IMPSRC)/$$</g'				\
+		-e 's/\$$(\.OODATE)/$$?/g'				\
+		-e 's/\$$(\.MEMBER)/$$%/g'				\
+		-e 's/\$$(\.PREFIX)/$$*/g'				\
+		-e 's/\$$(\.TARGET)/$$@/g'				\
+		-e 's/^\.sinclude/-include/'				\
+		-e 's/\.include/include/' $(.ALLSRC) > $(.TARGET)
+
 benchmark:	benchmark.o libsoldout.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
@@ -80,14 +93,6 @@ clean:
 	@mkdir -p $(DEPDIR)
 	@touch $(ALLDEPS)
 	@$(CC) -MM $(.IMPSRC) > $(DEPDIR)/$(.PREFIX).d
-	@grep -q "$(.PREFIX).d" $(ALLDEPS) \
-			|| echo ".include \"$(.PREFIX).d\"" >> $(ALLDEPS)
-	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $(.TARGET) $(.IMPSRC)
-
-.m.o:
-	@mkdir -p $(DEPDIR)
-	@touch $(ALLDEPS)
-	@$(CC) -MM $(.IMPSRC) > depends/$(.PREFIX).d
 	@grep -q "$(.PREFIX).d" $(ALLDEPS) \
 			|| echo ".include \"$(.PREFIX).d\"" >> $(ALLDEPS)
 	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $(.TARGET) $(.IMPSRC)

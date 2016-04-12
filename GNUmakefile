@@ -15,9 +15,10 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 DEPDIR	 = depends
+ALLDEPS	 = $(DEPDIR)/all
 
 AR	?= ar
-CC	?= gcc
+CC	?= cc
 CFLAGS	?= -g -O3 -Wall -Werror
 LDFLAGS	?=
 
@@ -39,8 +40,9 @@ libsoldout.a:	markdown.o array.o buffer.o renderers.o
 libsoldout.so:	libsoldout.so.1
 	ln -s $^ $@
 
-libsoldout.so.1: markdown.o array.o buffer.o renderers.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+libsoldout.so.1:	markdown.o array.o buffer.o renderers.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ \
+		$^ -o $@
 
 
 # executables
@@ -55,7 +57,7 @@ mkd2man:	mkd2man.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
 
-# housekeeping
+# Housekeeping
 
 benchmark:	benchmark.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
@@ -69,17 +71,15 @@ clean:
 
 # dependencies
 
-include $(wildcard $(DEPDIR)/*.d)
+-include "$(ALLDEPS)"
 
 
 # generic object compilations
 
-%.o:	%.c
+.c.o:
 	@mkdir -p $(DEPDIR)
+	@touch $(ALLDEPS)
 	@$(CC) -MM $< > $(DEPDIR)/$*.d
-	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $@ $<
-
-%.o:	%.m
-	@mkdir -p $(DEPDIR)
-	@$(CC) -MM $< > depends/$*.d
+	@grep -q "$*.d" $(ALLDEPS) \
+			|| echo "include \"$*.d\"" >> $(ALLDEPS)
 	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $@ $<
