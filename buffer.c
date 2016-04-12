@@ -16,8 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define BUFFER_STDARG
-
 #include "buffer.h"
 
 #include <stdio.h>

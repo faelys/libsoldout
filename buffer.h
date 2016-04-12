@@ -19,6 +19,7 @@
 #ifndef LITHIUM_BUFFER_H
 #define LITHIUM_BUFFER_H
 
+#include <stdarg.h>
 #include <stddef.h>
 
 
@@ -148,16 +149,9 @@ bufslurp(struct buf *, size_t);
 int
 buftoi(struct buf *, size_t, size_t *);
 
-
-
-#ifdef BUFFER_STDARG
-#include <stdarg.h>
-
 /* vbufprintf • stdarg variant of formatted printing into a buffer */
 void
 vbufprintf(struct buf *, const char*, va_list);
-
-#endif /* def BUFFER_STDARG */
 
 
 /********************

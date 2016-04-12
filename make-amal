@@ -20,7 +20,6 @@
 
 outputsource() {
 	sed	-e '/#include.*\".*\"/d'	\
-		-e '/#define.*BUFFER_STDARG/d'	\
 		-e 's/\/\*.*\*\///'		\
 		-e '/^[ \t]*\/\*/,/\*\//d'	\
 		-e 's/[ \t]*$//' $1
@@ -43,7 +42,6 @@ echo
 echo '#ifndef SOLDOUT_H'
 echo '#define SOLDOUT_H'
 echo
-echo '#define BUFFER_STDARG'
 
 for f in array.h buffer.h markdown.h renderers.h; do
 	outputsource $f
