@@ -13,12 +13,29 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd March 29, 2016
+.Dd April 13, 2016
 .Dt SOLDOUT_BUFFER 3
 .Os
 .Sh NAME
-.Nm buffer
-.Nd various buffer-related functions
+.Nm soldout_buffer ,
+.Nm bufcasecmp ,
+.Nm bufcmp ,
+.Nm bufcmps ,
+.Nm bufdup ,
+.Nm bufgrow ,
+.Nm bufnew ,
+.Nm bufnullterm ,
+.Nm bufprintf ,
+.Nm bufput ,
+.Nm bufputs ,
+.Nm bufputc ,
+.Nm bufrelease ,
+.Nm bufreset ,
+.Nm bufset ,
+.Nm bufslurp ,
+.Nm buftoi ,
+.Nm vbufprintf
+.Nd buffer handling functions for soldout
 .Sh SYNOPSIS
 .In buffer.h
 .Pp

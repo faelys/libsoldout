@@ -13,12 +13,33 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd March 29, 2016
+.Dd April 13, 2016
 .Dt SOLDOUT_ARRAY 3
 .Os
 .Sh NAME
-.Nm array
-.Nd various array-related functions
+.Nm soldout_array ,
+.Nm arr_adjust ,
+.Nm arr_free ,
+.Nm arr_grow ,
+.Nm arr_init ,
+.Nm arr_insert ,
+.Nm arr_item ,
+.Nm arr_newitem ,
+.Nm arr_remove ,
+.Nm arr_sorted_find ,
+.Nm arr_sorted_find_i ,
+.Nm parr_adjust ,
+.Nm parr_free ,
+.Nm parr_grow ,
+.Nm parr_init ,
+.Nm parr_insert ,
+.Nm parr_pop ,
+.Nm parr_push ,
+.Nm parr_remove ,
+.Nm parr_sorted_find ,
+.Nm parr_sorted_find_i ,
+.Nm parr_top
+.Nd array handling functions for soldout
 .Sh SYNOPSIS
 .In array.h
 .Ft int
