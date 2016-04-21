@@ -1677,7 +1677,7 @@ is_ref(char *data, size_t beg, size_t end, size_t *last, struct array *refs) {
 void
 markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	struct link_ref *lr;
-	struct buf *text = bufnew(TEXT_UNIT);
+	struct buf *text;
 	size_t i, beg, end;
 	struct render rndr;
 
@@ -1704,6 +1704,7 @@ markdown(struct buf *ob, struct buf *ib, const struct mkd_renderer *rndrer) {
 	rndr.active_char['&'] = char_entity;
 
 	/* first pass: looking for references, copying everything else */
+	text = bufnew(TEXT_UNIT);
 	beg = 0;
 	while (beg < ib->size) /* iterating over lines */
 		if (is_ref(ib->data, beg, ib->size, &end, &rndr.refs))
