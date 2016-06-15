@@ -994,7 +994,7 @@ parse_blockquote(struct buf *ob, struct render *rndr,
 	return end; }
 
 
-/* parse_blockquote • handles parsing of a regular paragraph */
+/* parse_paragraph • handles parsing of a regular paragraph */
 static size_t
 parse_paragraph(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
@@ -1051,7 +1051,7 @@ parse_paragraph(struct buf *ob, struct render *rndr,
 	return end; }
 
 
-/* parse_blockquote • handles parsing of a block-level code fragment */
+/* parse_blockcode • handles parsing of a block-level code fragment */
 static size_t
 parse_blockcode(struct buf *ob, struct render *rndr,
 			char *data, size_t size) {
@@ -1372,7 +1372,7 @@ parse_table_row(struct buf *ob, struct render *rndr, char *data, size_t size,
 	struct buf *cells = new_work_buffer(rndr);
 	int align;
 
-	/* skip leading blanks and sperator */
+	/* skip leading blanks and separator */
 	while (i < size && (data[i] == ' ' || data[i] == '\t'))
 		i += 1;
 	if (i < size && data[i] == '|')
