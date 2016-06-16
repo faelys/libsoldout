@@ -1139,7 +1139,8 @@ parse_listitem(struct buf *ob, struct render *rndr,
 			if (in_empty) has_inside_empty = 1;
 			if (pre == orgpre) /* the following item must have */
 				break;             /* the same indentation */
-			if (!sublist) sublist = work->size; }
+			if (!sublist) sublist = work->size;
+			else if (in_empty) bufputc(work, '\n'); }
 
 		/* joining only indented stuff after empty lines */
 		else if (in_empty && i < 4 && data[beg] != '\t') {
