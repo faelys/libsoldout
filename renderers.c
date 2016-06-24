@@ -27,7 +27,7 @@
 
 /* lus_attr_escape • copy the buffer entity-escaping '<', '>', '&' and '"' */
 void
-lus_attr_escape(struct buf *ob, char *src, size_t size) {
+lus_attr_escape(struct buf *ob, const char *src, size_t size) {
 	size_t  i = 0, org;
 	while (i < size) {
 		/* copying directly unescaped characters */
@@ -48,7 +48,7 @@ lus_attr_escape(struct buf *ob, char *src, size_t size) {
 
 /* lus_body_escape • copy the buffer entity-escaping '<', '>' and '&' */
 void
-lus_body_escape(struct buf *ob, char *src, size_t size) {
+lus_body_escape(struct buf *ob, const char *src, size_t size) {
 	size_t  i = 0, org;
 	while (i < size) {
 		/* copying directly unescaped characters */
@@ -145,9 +145,9 @@ rndr_link(struct buf *ob, struct buf *link, struct buf *title,
 static void
 rndr_list(struct buf *ob, struct buf *text, int flags, void *opaque) {
 	if (ob->size) bufputc(ob, '\n');
-	bufput(ob, flags & MKD_LIST_ORDERED ? "<ol>\n" : "<ul>\n", 5);
+	bufput(ob, (flags & MKD_LIST_ORDERED) ? "<ol>\n" : "<ul>\n", 5);
 	if (text) bufput(ob, text->data, text->size);
-	bufput(ob, flags & MKD_LIST_ORDERED ? "</ol>\n" : "</ul>\n", 6); }
+	bufput(ob, (flags & MKD_LIST_ORDERED) ? "</ol>\n" : "</ul>\n", 6); }
 
 static void
 rndr_listitem(struct buf *ob, struct buf *text, int flags, void *opaque) {
@@ -336,10 +336,11 @@ const struct mkd_renderer mkd_xhtml = {
 static int
 print_link_wxh(struct buf *ob, struct buf *link) {
 	size_t eq, ex, end;
+	if (link->size < 1) return 0;
 	eq = link->size - 1;
 	while (eq > 0 && (link->data[eq - 1] != ' ' || link->data[eq] != '='))
 		eq -= 1;
-	if (eq <= 0) return 0;
+	if (!eq) return 0;
 	ex = eq + 1;
 	while (ex < link->size
 	&& link->data[ex] >= '0' && link->data[ex] <= '9')
@@ -404,14 +405,14 @@ discount_link(struct buf *ob, struct buf *link, struct buf *title,
 		BUFPUTSL(ob, "</span>");
 		return 1; }
 	else if (link->size > 3 && !strncasecmp(link->data, "id:", 3)) {
-		BUFPUTSL(ob, "<a id=\"");
+		BUFPUTSL(ob, "<span id=\"");
 		lus_attr_escape(ob, link->data + 3, link->size - 3);
 		BUFPUTSL(ob, "\">");
 		bufput(ob, content->data, content->size);
 		BUFPUTSL(ob, "</span>");
 		return 1; }
 	else if (link->size > 4 && !strncasecmp(link->data, "raw:", 4)) {
-		lus_attr_escape(ob, link->data + 4, link->size - 4);
+		bufput(ob, link->data + 4, link->size - 4);
 		return 1; }
 	return rndr_link(ob, link, title, content, opaque); }
 

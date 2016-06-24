@@ -1,0 +1,373 @@
+.\"
+.\" Copyright (c) 2009 - 2016 Natacha Porté <natacha@instinctive.eu>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd May 30, 2016
+.Dt SOLDOUT_MARKDOWN 3
+.Os
+.Sh NAME
+.Nm soldout_markdown ,
+.Nm markdown
+.Nd parse markdown document
+.Sh SYNOPSIS
+.In markdown.h
+.Pp
+.Fd #define MKD_CELL_ALIGN_DEFAULT
+.Fd #define MKD_CELL_ALIGN_LEFT
+.Fd #define MKD_CELL_ALIGN_RIGHT
+.Fd #define MKD_CELL_ALIGN_CENTER
+.Fd #define MKD_CELL_ALIGN_MASK
+.Fd #define MKD_CELL_HEAD
+.Fd #define MKD_LIST_ORDERED
+.Fd #define MKD_LI_BLOCK
+.Ft void
+.Fo markdown
+.Fa "struct buf *ob"
+.Fa "struct buf *ib"
+.Fa "const struct mkd_renderer *rndr"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn markdown
+function parses the input buffer
+.Fa ib
+and renders it into the output buffer
+.Fa ob ;
+.Fa rndr
+is a pointer to the renderer structure.
+.Pp
+Function pointers in
+.Vt "struct mkd_renderer"
+can be
+.Dv NULL .
+A null block-level callback will make the corresponding block
+disappear from the output, as if the callback was an empty function.
+A null span-level callback will cause the corresponding element
+to be treated as normal characters, copied verbatim to the output.
+Moreover, span-level callbacks return an integer, which tells
+whether the renderer accepts to render the item (non-zero return value)
+or whether it should be copied verbatim (zero return value).
+.Pp
+The first argument of a renderer function is always the output buffer,
+where the function is supposed to write its output.
+The last argument of a renderer function is always
+a private pointer, which is
+.Va opaque
+member of
+.Vt struct mkd_renderer .
+libsoldout itself never does nothing with this data.
+.Pp
+.Va emph_chars
+is a zero-terminated string which contains
+the set of characters that trigger emphasis.
+In regular markdown, emphasis is only
+triggered by
+.Ql _
+and
+.Ql * ,
+but in some extensions it might be useful to
+add other characters to this list.
+The character that triggered the emphasis is then passed to
+.Va emphasis , double_emphasis
+and
+.Va triple_emphasis
+function callbacks through the parameter
+.Va c .
+.Pp
+The
+.Va normal_text
+callback should perform whatever escape is needed
+to have the output looking like the input data.
+.Pp
+libsoldout supports PHP-Markdown-like tables.
+It uses the following flags:
+.Dv MKD_CELL_ALIGN_DEFAULT ,
+.Dv MKD_CELL_ALIGN_LEFT ,
+.Dv MKD_CELL_ALIGN_RIGHT ,
+.Dv MKD_CELL_ALIGN_CENTER ,
+.Dv MKD_CELL_ALIGN_MASK ,
+.Dv MKD_CELL_HEAD
+in these function callbacks:
+.Va table_cell
+and
+.Va table_row .
+.Pp
+.Dv MKD_LIST_ORDERED ,
+.Dv MKD_LI_BLOCK
+are used as flags in these function callbacks:
+.Va list
+and
+.Va listitem .
+.Ss Types
+.Bl -ohang
+.It Vt "enum mkd_autolink"
+type of autolink:
+.Bl -tag -width Ds
+.It MKDA_NOT_AUTOLINK
+used internally when it is not an autolink.
+.It MKDA_NORMAL
+normal http/https/ftp link.
+.It MKDA_EXPLICIT_EMAIL
+e-mail link with explicit mailto.
+.It MKDA_IMPLICIT_EMAIL
+e-mail link without mailto.
+.El
+.It Vt "struct mkd_renderer"
+consists of the following fields:
+.Bl -tag -width Ds
+.It Document level callbacks
+.Bl -tag -width Ds
+.It Va prolog
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "void *opaque"
+.Fc
+.It Va epilog
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "void *opaque"
+.Fc
+.El
+.El
+.Bl -tag -width Ds
+.It Block level callbacks Pq Dv NULL skips the block
+.Bl -tag -width Ds
+.It Va blockcode
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "void *opaque"
+.Fc
+.It Va blockquote
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "void *opaque"
+.Fc
+.It Va blockhtml
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "void *opaque"
+.Fc
+.It Va header
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "int level"
+.Fa "void *opaque"
+.Fc
+.It Va hrule
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "void *opaque"
+.Fc
+.It Va list
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "int flags"
+.Fa "void *opaque"
+.Fc
+.It Va listitem
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "int flags"
+.Fa "void *opaque"
+.Fc
+.It Va paragraph
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "void *opaque"
+.Fc
+.It Va table
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *head_row"
+.Fa "struct buf *rows"
+.Fa "void *opaque"
+.Fc
+.It Va table_cell
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "int flags"
+.Fa "void *opaque"
+.Fc
+.It Va table_row
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *cells"
+.Fa "int flags"
+.Fa "void *opaque"
+.Fc
+.El
+.It Span level callbacks Pq Dv NULL or return 0 prints the span verbatim
+.Bl -tag -width Ds
+.It Va autolink
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *link"
+.Fa "enum mkd_autolink type"
+.Fa "void *opaque"
+.Fc
+.It Va codespan
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "void *opaque"
+.Fc
+.It Va emphasis
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "char c"
+.Fa "void *opaque"
+.Fc
+.It Va double_emphasis
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "char c"
+.Fa "void *opaque"
+.Fc
+.It Va triple_emphasis
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "char c"
+.Fa "void *opaque"
+.Fc
+.It Va image
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *link"
+.Fa "struct buf *title"
+.Fa "struct buf *alt"
+.Fa "void *opaque"
+.Fc
+.It Va linebreak
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "void *opaque"
+.Fc
+.It Va link
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *link"
+.Fa "struct buf *title"
+.Fa "struct buf *content"
+.Fa "void *opaque"
+.Fc
+.It Va raw_html_tag
+a pointer to a
+.Ft int
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *tag"
+.Fa "void *opaque"
+.Fc
+.El
+.It Low level callbacks Pq Dv NULL copies input directly into the output
+.Bl -tag -width Ds
+.It Va entity
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *entity"
+.Fa "void *opaque"
+.Fc
+.It Va normal_text
+a pointer to a
+.Ft void
+.Fo function
+.Fa "struct buf *ob"
+.Fa "struct buf *text"
+.Fa "void *opaque"
+.Fc
+.El
+.It Renderer data
+.Bl -tag -width Ds
+.It Vt int Va max_work_stack
+prevent arbitrary deep recursion.
+.It Vt "const char *" Va emph_chars
+chars that trigger emphasis rendering.
+.It Vt "void *" Va opaque
+opaque data send to every rendering callback.
+.El
+.El
+.El
+.Sh RETURN VALUES
+The
+.Fn markdown
+function does not return a value.
+.Sh SEE ALSO
+.Xr soldout 3 ,
+.Xr soldout_buffer 3 ,
+.Xr soldout_renderers 3
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm soldout
+library was written by
+.An Natasha Qo Kerensikova Qc Porte Aq Mt natacha@instinctive.eu .
+Manual page was originally written by
+.An Massimo Manghi Aq Mt mxmanghi@apache.org ,
+and rewritten to mdoc format by
+.An Svyatoslav Mishyn Aq Mt juef@openmailbox.org .

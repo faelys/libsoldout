@@ -29,19 +29,13 @@
 #define OUTPUT_UNIT 64
 
 
-/* buffer statistics, to track some memleaks */
-extern long buffer_stat_nb;
-extern size_t buffer_stat_alloc_bytes;
-
-
-
 /* usage • print the option list */
-void
+static void
 usage(FILE *out, const char *name) {
 	fprintf(out, "Usage: %s [-h | -x] [-d | -m | -n] [input-file]\n\n",
 	    name);
 	fprintf(out, "\t-d, --discount\n"
-	    "\t\tEnable some Discount extensions (image size specficiation,\n"
+	    "\t\tEnable some Discount extensions (image size specification,\n"
 	    "\t\tclass blocks and 'abbr:', 'class:', 'id:' and 'raw:'\n"
 	    "\t\tpseudo-protocols)\n"
 	    "\t-H, --html\n"
@@ -149,6 +143,7 @@ main(int argc, char **argv) {
 	bufrelease(ib);
 	bufrelease(ob);
 
+#ifdef BUFFER_STATS
 	/* memory checks */
 	if (buffer_stat_nb)
 		fprintf(stderr, "Warning: %ld buffers still active\n",
@@ -156,6 +151,7 @@ main(int argc, char **argv) {
 	if (buffer_stat_alloc_bytes)
 		fprintf(stderr, "Warning: %zu bytes still allocated\n",
 				buffer_stat_alloc_bytes);
+#endif
 	return 0; }
 
 /* vim: set filetype=c: */

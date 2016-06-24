@@ -14,23 +14,35 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-DEPDIR=depends
-CFLAGS=-c -g -O3 -Wall -Werror -fPIC
-LDFLAGS=-g -O3 -Wall -Werror
-CC=gcc
+DEPDIR	 = depends
+ALLDEPS	 = $(DEPDIR)/all
 
-all:		libsoldout.so mkd2html mkd2latex mkd2man
+AR	?= ar
+CC	?= cc
+CFLAGS	?= -g -O3 -Wall -Werror
+LDFLAGS	?=
 
-.PHONY:		all clean
+all:		libsoldout.a libsoldout.so mkd2html mkd2latex mkd2man
+
+.PHONY:		all amal clean
+
+
+# amalgamation
+amal:
+	@./make-amal
 
 
 # libraries
 
+libsoldout.a:	markdown.o array.o buffer.o renderers.o
+	$(AR) rs $@ $^
+
 libsoldout.so:	libsoldout.so.1
 	ln -s $^ $@
 
-libsoldout.so.1: markdown.o array.o buffer.o renderers.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+libsoldout.so.1:	markdown.o array.o buffer.o renderers.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname=$@ \
+		$^ -o $@
 
 
 # executables
@@ -45,31 +57,29 @@ mkd2man:	mkd2man.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
 
-# housekeeping
+# Housekeeping
 
 benchmark:	benchmark.o libsoldout.so
 	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f *.o
-	rm -f libsoldout.so libsoldout.so.*
+	rm -f libsoldout.a libsoldout.so libsoldout.so.*
 	rm -f mkd2html mkd2latex mkd2man benchmark
 	rm -rf $(DEPDIR)
 
 
 # dependencies
 
-include $(wildcard $(DEPDIR)/*.d)
+-include "$(ALLDEPS)"
 
 
 # generic object compilations
 
-%.o:	%.c
+.c.o:
 	@mkdir -p $(DEPDIR)
+	@touch $(ALLDEPS)
 	@$(CC) -MM $< > $(DEPDIR)/$*.d
-	$(CC) $(CFLAGS) -o $@ $<
-
-%.o:	%.m
-	@mkdir -p $(DEPDIR)
-	@$(CC) -MM $< > depends/$*.d
-	$(CC) $(CFLAGS) -o $@ $<
+	@grep -q "$*.d" $(ALLDEPS) \
+			|| echo "include \"$*.d\"" >> $(ALLDEPS)
+	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $@ $<

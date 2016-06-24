@@ -19,6 +19,7 @@
 #ifndef LITHIUM_BUFFER_H
 #define LITHIUM_BUFFER_H
 
+#include <stdarg.h>
 #include <stddef.h>
 
 
@@ -40,7 +41,7 @@ struct buf {
  * MACROS *
  **********/
 
-/* CONST_BUF • global buffer from a string litteral */
+/* CONST_BUF • global buffer from a string literal */
 #define CONST_BUF(name, string) \
 	static struct buf name = { string, sizeof string -1, sizeof string }
 
@@ -50,16 +51,16 @@ struct buf {
 	struct buf name = { strname, strlen(strname) }
 
 
-/* BUFPUTSL • optimized bufputs of a string litteral */
-#define BUFPUTSL(output, litteral) \
-	bufput(output, litteral, sizeof litteral - 1)
+/* BUFPUTSL • optimized bufputs of a string literal */
+#define BUFPUTSL(output, literal) \
+	bufput(output, literal, sizeof literal - 1)
 
 
 /***********************
  * FUNCTION ATTRIBUTES *
  ***********************/
 
-/* BUF_ALLOCATOR • the function returns a completely new ponter */
+/* BUF_ALLOCATOR • the function returns a completely new pointer */
 #ifdef __GNUC__
 #define BUF_ALLOCATOR \
 	__attribute__ ((malloc))
@@ -71,7 +72,7 @@ struct buf {
 /* BUF_PRINTF_LIKE • marks the function as behaving like printf */
 #ifdef __GNUC__
 #define BUF_PRINTF_LIKE(format_index, first_variadic_index) \
-	__attribute__ ((format (printf, format_index, first_variadic_index)));
+	__attribute__ ((format (printf, format_index, first_variadic_index)))
 #else
 #define BUF_PRINTF_LIKE(format_index, first_variadic_index)
 #endif
@@ -148,16 +149,22 @@ bufslurp(struct buf *, size_t);
 int
 buftoi(struct buf *, size_t, size_t *);
 
-
-
-#ifdef BUFFER_STDARG
-#include <stdarg.h>
-
 /* vbufprintf • stdarg variant of formatted printing into a buffer */
 void
 vbufprintf(struct buf *, const char*, va_list);
 
-#endif /* def BUFFER_STDARG */
+
+/********************
+ * GLOBAL VARIABLES *
+ ********************/
+
+#ifdef BUFFER_STATS
+
+extern long buffer_stat_nb;
+extern size_t buffer_stat_alloc_bytes;
+
+#endif /* def BUFFER_STATS */
+
 
 #endif /* ndef LITHIUM_BUFFER_H */
 

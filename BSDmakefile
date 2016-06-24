@@ -14,18 +14,28 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-DEPDIR=depends
-ALLDEPS=$(DEPDIR)/all
-CFLAGS=-c -g -O3 -Wall -Werror -fPIC
-LDFLAGS=-g -O3 -Wall -Werror
-CC=gcc
+DEPDIR	 = depends
+ALLDEPS	 = $(DEPDIR)/all
 
-all:		libsoldout.so mkd2html mkd2latex mkd2man
+AR	?= ar
+CC	?= cc
+CFLAGS	?= -g -O3 -Wall -Werror
+LDFLAGS	?=
 
-.PHONY:		all clean
+all:		libsoldout.a libsoldout.so mkd2html mkd2latex mkd2man
+
+.PHONY:		all amal clean
+
+
+# amalgamation
+amal:
+	@./make-amal
 
 
 # libraries
+
+libsoldout.a:	markdown.o array.o buffer.o renderers.o
+	$(AR) rs $(.TARGET) $(.ALLSRC)
 
 libsoldout.so:	libsoldout.so.1
 	ln -s $(.ALLSRC) $(.TARGET)
@@ -49,12 +59,25 @@ mkd2man:	mkd2man.o libsoldout.so
 
 # Housekeeping
 
+GNUmakefile:	BSDmakefile
+	@sed	-e 's/^\(all:.*\)GNUmakefile /\1/'			\
+		-e 's/\(rm .*\)GNUmakefile /\1/'			\
+		-e '/^GNUmakefile:/,/^$$/d'				\
+		-e 's/\$$(\.ALLSRC)/$$^/g'				\
+		-e 's/\$$(\.IMPSRC)/$$</g'				\
+		-e 's/\$$(\.OODATE)/$$?/g'				\
+		-e 's/\$$(\.MEMBER)/$$%/g'				\
+		-e 's/\$$(\.PREFIX)/$$*/g'				\
+		-e 's/\$$(\.TARGET)/$$@/g'				\
+		-e 's/^\.sinclude/-include/'				\
+		-e 's/\.include/include/' $(.ALLSRC) > $(.TARGET)
+
 benchmark:	benchmark.o libsoldout.so
 	$(CC) $(LDFLAGS) $(.ALLSRC) -o $(.TARGET)
 
 clean:
 	rm -f *.o
-	rm -f libsoldout.so libsoldout.so.*
+	rm -f libsoldout.a libsoldout.so libsoldout.so.*
 	rm -f mkd2html mkd2latex mkd2man benchmark
 	rm -rf $(DEPDIR)
 
@@ -72,12 +95,4 @@ clean:
 	@$(CC) -MM $(.IMPSRC) > $(DEPDIR)/$(.PREFIX).d
 	@grep -q "$(.PREFIX).d" $(ALLDEPS) \
 			|| echo ".include \"$(.PREFIX).d\"" >> $(ALLDEPS)
-	$(CC) $(CFLAGS) -o $(.TARGET) $(.IMPSRC)
-
-.m.o:
-	@mkdir -p $(DEPDIR)
-	@touch $(ALLDEPS)
-	@$(CC) -MM $(.IMPSRC) > depends/$(.PREFIX).d
-	@grep -q "$(.PREFIX).d" $(ALLDEPS) \
-			|| echo ".include \"$(.PREFIX).d\"" >> $(ALLDEPS)
-	$(CC) $(CFLAGS) -o $(.TARGET) $(.IMPSRC)
+	$(CC) $(CFLAGS) -std=c99 -fPIC -c -o $(.TARGET) $(.IMPSRC)
