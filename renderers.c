@@ -595,7 +595,7 @@ nat_header(struct buf *ob, struct buf *text, int level, void *opaque) {
 			 ||  text->data[i] == '.' || text->data[i] == ':'
 			 || (text->data[i] >= 'a' && text->data[i] <= 'z')
 			 || (text->data[i] >= 'A' && text->data[i] <= 'Z')
-			 || (text->data[i] >= '0' && text->data[i] <= '0')))
+			 || (text->data[i] >= '0' && text->data[i] <= '9')))
 		i += 1;
 	bufprintf(ob, "<h%d", level);
 	if (i < text->size && text->data[i] == '#') {
@@ -619,7 +619,7 @@ nat_paragraph(struct buf *ob, struct buf *text, void *opaque) {
 			/* what is allowed for class names */
 			 || (text->data[i] >= 'a' && text->data[i] <= 'z')
 			 || (text->data[i] >= 'A' && text->data[i] <= 'Z')
-			 || (text->data[i] >= '0' && text->data[i] <= '0')))
+			 || (text->data[i] >= '0' && text->data[i] <= '9')))
 			i += 1;
 		if (i < text->size && text->data[i] == ')') {
 			bufprintf(ob, " class=\"%.*s\"",
