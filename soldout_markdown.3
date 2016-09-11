@@ -87,8 +87,7 @@ e-mail link with explicit mailto.
 .It MKDA_IMPLICIT_EMAIL
 e-mail link without mailto.
 .El
-.Pp
-.Em struct mkd_renderer
+.It Vt "struct mkd_renderer"
 has this form:
 .Bd -literal -offset indent
 struct mkd_renderer {
@@ -170,7 +169,6 @@ struct mkd_renderer {
 	void *opaque; /* opaque data send to every rendering callback */
 };
 .Ed
-.El
 .Pp
 The first argument of a renderer function is always the output buffer,
 where the function is supposed to write its output.
@@ -236,6 +234,7 @@ and
 .Va triple_emphasis
 function callbacks through the parameter
 .Va c .
+.El
 .Sh EXAMPLES
 Simple example that uses first argument as a markdown string,
 converts it to an HTML and outputs it to stdout.
