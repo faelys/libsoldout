@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd September 11, 2016
+.Dd September 12, 2016
 .Dt SOLDOUT_ARRAY 3
 .Os
 .Sh NAME
@@ -58,7 +58,7 @@
 .Ft int
 .Fo arr_grow
 .Fa "struct array *arr"
-.Fa "int need"
+.Fa "int sz"
 .Fc
 .Ft void
 .Fo arr_init
@@ -108,7 +108,7 @@
 .Ft int
 .Fo parr_grow
 .Fa "struct parray *arr"
-.Fa "int need"
+.Fa "int sz"
 .Fc
 .Ft void
 .Fo parr_init
@@ -155,28 +155,25 @@
 .Bl -ohang
 .It Vt "struct array"
 generic linear array.
-Consists of the following fields:
-.Bl -tag -width Ds
-.It Vt "void *" Va base
-actual array data.
-.It Vt int Va size
-size of the array.
-.It Vt int Va asize
-allocated size.
-.It Vt size_t Va unit
-reallocation unit size.
-.El
+Has this form:
+.Bd -literal -offset indent
+struct array {
+	void	*base;
+	int	 size;
+	int	 asize;
+	size_t	 unit;
+};
+.Ed
 .It Vt "struct parray"
 array of pointers.
-Consists of the following fields:
-.Bl -tag -width Ds
-.It Vt "void **" Va item
-actual parray data.
-.It Vt int Va size
-size of the parray.
-.It Vt int Va asize
-allocated size.
-.El
+Has this form:
+.Bd -literal -offset indent
+struct parray {
+	void	**item;
+	int	  size;
+	int	  asize;
+};
+.Ed
 .It Vt array_cmp_fn
 comparison function for sorted arrays.
 .El
