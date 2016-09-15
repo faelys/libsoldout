@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd March 1, 2016
+.Dd September 12, 2016
 .Dt MKD2HTML 1
 .Os
 .Sh NAME
@@ -43,28 +43,27 @@ options.
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl d , Fl Fl discount
-enable Discount extensions:
+enable Discount extensions and PHP-Markdown-like tables:
 .Bl -bullet -width 1m
 .It
-image size specification, by appending "=(width)x(height)" to the link
+image size specification, by appending
+.Do =(width)x(height) Dc to the link
 .It
 pseudo-protocols in links:
 .Bl -bullet -width 1m
 .It
-abbr:description for <abbr title="description">...</abbr>
+.Do abbr:description Dc for <abbr title="description">...</abbr>
 .It
-class:name for <span class="name">...</span>
+.Do class:name Dc for <span class="name">...</span>
 .It
-id:name for <span id="name">...</span>
+.Do id:name Dc for <span id="name">...</span>
 .It
-raw:text for verbatim unprocessed text inclusion
+.Do raw:text Dc for verbatim unprocessed text inclusion
 .El
 .It
-class blocks: blockquotes beginning with %class% will be rendered as a div of
-the given class(es)
+class blocks: blockquotes beginning with
+.Do %class% Dc will be rendered as a div of the given class(es)
 .El
-.Pp
-and PHP-Markdown-like tables.
 .It Fl H , Fl Fl html
 output HTML (self-closing tags like: <br>).
 .It Fl h , Fl Fl help
@@ -75,16 +74,20 @@ disable all extensions and use strict markdown syntax.
 enable Discount extensions and Natasha's own extensions:
 .Bl -bullet -width 1m
 .It
-id attribute for headers, using the syntax id#Header text
+id attribute for headers, using the syntax
+.Dq id#Header text
 .It
-class attribute for paragraphs, by putting class name(s) between parenthesis
-at the very beginning of the paragraph
+class attribute for paragraphs, by putting class name(s)
+between parenthesis at the very beginning of the paragraph
 .It
-<ins> and <del> spans, using respectively ++ and -- as delimiters (with
-emphasis-like restrictions, i.e. an opening delimiter cannot be followed by a
-whitespace, and a closing delimiter cannot be preceded by a whitespace)
+<ins> and <del> spans, using respectively
+.Do ++ Dc and Do -- Dc
+as delimiters (with emphasis-like restrictions,
+i.e. an opening delimiter cannot be followed by a whitespace,
+and a closing delimiter cannot be preceded by a whitespace)
 .It
-plain <span> without attribute, using emphasis-like delimiter |
+plain <span> without attribute, using emphasis-like delimiter
+.Sq |
 .El
 .It Fl x , Fl Fl xhtml
 output XHTML (self-closing tags like: <br />).

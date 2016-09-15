@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd April 13, 2016
+.Dd September 12, 2016
 .Dt SOLDOUT_BUFFER 3
 .Os
 .Sh NAME
@@ -39,9 +39,9 @@
 .Sh SYNOPSIS
 .In buffer.h
 .Pp
-.Fd #define CONST_BUF(name, string)
-.Fd #define VOLATILE_BUF(name, strname)
-.Fd #define BUFPUTSL(output, literal)
+.Fd "#define CONST_BUF(name, string)"
+.Fd "#define VOLATILE_BUF(name, strname)"
+.Fd "#define BUFPUTSL(output, literal)"
 .Ft int
 .Fo bufcasecmp
 .Fa "const struct buf *a"
@@ -143,21 +143,16 @@ show how many bytes were allocated.
 .Bl -ohang
 .It Vt "struct buf"
 character array buffer.
-Consists of the following fields:
-.Bl -tag -width Ds
-.It Vt "char *" Va data
-actual character data.
-.It Vt size_t Va size
-size of the string.
-.It Vt size_t Va asize
-allocated size
-.Pq 0 = volatile buffer .
-.It Vt size_t Va unit
-reallocation unit size
-.Pq 0 = read-only buffer .
-.It Vt int Va ref
-reference count.
-.El
+Has this form:
+.Bd -literal -offset indent
+struct buf {
+	char	*data;	/* actual character data */
+	size_t	 size;	/* size of the string */
+	size_t	 asize;	/* allocated size (0 = volatile buffer) */
+	size_t	 unit;	/* reallocation unit size (0 = read-only buffer) */
+	int	 ref;	/* reference count */
+};
+.Ed
 .El
 .Ss Macros
 .Bl -ohang
@@ -188,7 +183,8 @@ compare a buffer to a string.
 duplicate a buffer
 .Va src .
 .It Fn bufgrow
-increase the allocated size to the given value.
+increase the allocated size to the size
+.Va sz .
 .It Fn bufnew
 create a new buffer.
 .It Fn bufnullterm
@@ -256,24 +252,10 @@ The
 function returns on success 1; on error - 0.
 .Pp
 The
-.Fn bufnullterm ,
-.Fn bufprintf ,
-.Fn bufput ,
-.Fn bufputs ,
-.Fn bufputc ,
-.Fn bufrelease ,
-.Fn bufreset ,
-.Fn bufset ,
-.Fn bufslurp
-and
-.Fn vbufprintf
-functions do not return a value.
-.Pp
-The
 .Fn buftoi
 function return the converted value.
 .Sh SEE ALSO
-.Xr soldout 3 ,
+.Xr soldout_markdown 3 ,
 .Xr stdarg 3
 .Sh AUTHORS
 .An -nosplit
